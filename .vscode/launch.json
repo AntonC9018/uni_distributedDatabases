@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Package",
+            "type": "go",
+            "request": "launch",
+            "debugAdapter": "dlv-dap",
+            "mode": "debug",
+            "program": "${workspaceFolder}/source/webapp",
+            "args": [
+            ],
+            "env": {
+                "CGO_ENABLED": "1",
+                "CXX": "zig c++",
+                "CC": "zig cc",
+            }
+        }
+    ]
+}
