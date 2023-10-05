@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -14,23 +12,23 @@ type Product struct {
 }
 
 func main() {
-	prod := Product{}
-	fmt.Println(prod.CreatedAt)
-
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&Product{})
+	err = db.AutoMigrate(&Product{})
+	if err != nil {
+		panic("failed to migrate database")
+	}
 
 	// Create
 	db.Create(&Product{Code: "D42", Price: 100})
 
 	// Read
 	var product Product
-	db.First(&product, 1)                 // find product with integer primary key
+	// db.First(&product, 1)                 // find product with integer primary key
 	db.First(&product, "code = ?", "D42") // find product with code D42
 
 	// Update - update product's price to 200
