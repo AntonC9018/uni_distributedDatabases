@@ -56,5 +56,80 @@ pe niște serveri independente, gestionate manual de câțiva lucrători în ni�
 Introducerea datelor se realizează ori de angajați care gestionează acestea,
 ori la distanță din oarecare din țări principale folosind aplicația internă.
 
+Am făcut o diagramă aproximativă. 
+Am scris "Foi" doar la unele noduri, deoarece presupunem că acestea sunt păstrate într-o singură bază de date, per țară.
+Aceasta poate fi diferit, și chiar în continuare voi da un exemplu unde ambele noduri au căte o tabelă de foi.
+Structura sistemelor între țări care provizionează serviciile este identică (Moldova și România).
+Am făcut ca fiecare țara străină să aibă doar unul singur oficiu cu o singură bază de date.
+Datele necesare o să fie copiate și păstrate în tările principale cu oficiile în mod regular.
+Aceasta poate fi realizat prin interogarea elementelor din tabele care au fost actualizate
+după data trecută de ultimă sincronizare.
+Prin urmare, avem mai puține comunicații între diferite țări, reducând presiunea la serveri.
+> Presupun că actualizarea bazelor de date din țări străine nu este frecventă, 
+> așadar așa structură este logică.
+
+![](geography_diagram.svg)
+
+## 3. Proiectarea bazei de date distribuite ca proiecţia pe schema alocării geografice a subdiviziunilor organizaţiei
+
+În continuare vom examina doar partea furnizorilor de servicii,
+adică oficiile din Moldova și România.
+
+O să simplificăm sistemul și mai mult, lăsând doar două noduri din Moldova.
+
+O să spunem că fiecare din acestea are foile lui, dar poate referi și la alte foi.
+
+Încă, fiecare nod ține cont de lista sa de clienți, iar în cazul în care clienții
+se mută din orașul primilui nod în orașul celui de-al doilea nod,
+îl recunoaștem pe clientul acesta folosind email-ul lui.
+Istoria cumpărăturilor și așa mai departe o putem accesa verificând toate nodurile individual.
+
+O să spunem că oficiul din Chișinău își ține o copie a foilor propuse de Bălți (replică),
+și o legătură cu tabelul clienților din Bălți (link).
+
+Tot asta o să fie și în Bălți.
+
+Fiecare nod o să aibă lista lui de cumpărături ale foilor turistice.
+
+![](diagram2.svg)
 
 
+## 4.	Proiectarea bazelor de date locale pe fiecare nod al BDD.
+
+Fiecare nod o să aibă niște tabele proprii, identice între noduri.
+
+> FoaieTip poate avea valorile: Munte, Mare, Excursie.
+
+```mermaid
+erDiagram
+Client {
+  int id PK
+  string email UK
+  string nume
+  string prenume
+}
+Client ||--o{ Cumparatura : has
+Client ||--o{ Rezervare : has
+Rezervare {
+  int ordNum PK
+  int clientId FK
+  int foaieId FK
+  data dataRezervarii
+  money gaj
+}
+Cumparatura {
+  int ordNum PK
+  int clientId FK
+  int foaieId FK
+  data dataCumpararii
+}
+Foaie {
+  int id PK
+  FoaieTip tip
+  money pret
+  bool providedTransport
+  string hotel
+}
+Foaie ||--o{ Cumparatura : has
+Foaie ||--o{ Rezervare : has
+```
