@@ -45,6 +45,15 @@ o să fie următoarele:
   crearea unor filiale adaugătoare, ajustarea prețului serviciilor,
   etc.
 
+Însă, în continuare, vom explica doar partea busness-ului care se ocupă cu 
+rezervarea și vânzarea de foi turistice.
+
+O foaie turistică presupune un pachet de servicii care poate include transportul,
+hotelul, și alte servicii de divertisment.
+Acesta poate fi cumpărat de pe site, sau de la unul din oficii.
+Încă, o foaie poate fi rezervată, achitând doar o parte din întregul cost.
+
+
 ## 2. Schema alocării geografice a subdiviziunilor organizaţiei descentralizate din domeniului concret din lumea reală
 
 Să spunem că compania să existe în Moldova și România, cu câte 3 oficii în fiecarea din acestea.
@@ -70,31 +79,11 @@ Prin urmare, avem mai puține comunicații între diferite țări, reducând pre
 
 ![](geography_diagram.svg)
 
-## 3. Proiectarea bazei de date distribuite ca proiecţia pe schema alocării geografice a subdiviziunilor organizaţiei
+
+## 4.	Proiectarea bazelor de date locale pe fiecare nod al BDD.
 
 În continuare vom examina doar partea furnizorilor de servicii,
 adică oficiile din Moldova și România.
-
-O să simplificăm sistemul și mai mult, lăsând doar două noduri din Moldova.
-
-O să spunem că fiecare din acestea are foile lui, dar poate referi și la alte foi.
-
-Încă, fiecare nod ține cont de lista sa de clienți, iar în cazul în care clienții
-se mută din orașul primilui nod în orașul celui de-al doilea nod,
-îl recunoaștem pe clientul acesta folosind email-ul lui.
-Istoria cumpărăturilor și așa mai departe o putem accesa verificând toate nodurile individual.
-
-O să spunem că oficiul din Chișinău își ține o copie a foilor propuse de Bălți (replică),
-și o legătură cu tabelul clienților din Bălți (link).
-
-Tot asta o să fie și în Bălți.
-
-Fiecare nod o să aibă lista lui de cumpărături ale foilor turistice.
-
-![](diagram2.svg)
-
-
-## 4.	Proiectarea bazelor de date locale pe fiecare nod al BDD.
 
 Fiecare nod o să aibă niște tabele proprii, identice între noduri.
 
@@ -133,3 +122,49 @@ Foaie {
 Foaie ||--o{ Cumparatura : has
 Foaie ||--o{ Rezervare : has
 ```
+ 
+Notez, că la unul din noduri tabelul Foaie o să fie partiționat după câmpul `tip`,
+deci tabelul respectiv de fapt va arăta puțin diferit.
+Încă, nu arăt tabelele adăugătoare, ca copii.
+
+
+## 5. Planificarea fragmentelor (partiţiilor) obiectelor necesare (fragmente, replici, linkuri, snapshoturi) pe fiecare nod al BDD
+
+O să simplificăm sistemul și mai mult, lăsând doar două noduri din Moldova.
+
+O să spunem că fiecare din acestea are foile lui, dar poate referi și la alte foi.
+
+O să spunem că oficiul din Chișinău își ține o copie a foilor propuse de Bălți (replică),
+și o legătură cu tabelul clienților din Bălți (link).
+
+Încă, fiecare nod ține cont de lista sa de clienți, iar în cazul în care clienții
+se mută din orașul primilui nod în orașul celui de-al doilea nod,
+îl recunoaștem pe clientul acesta folosind email-ul lui.
+Istoria cumpărăturilor și așa mai departe o putem accesa verificând toate nodurile individual.
+
+Tot asta o să fie și în Bălți.
+
+Fiecare nod o să aibă lista lui de cumpărături ale foilor turistice.
+
+Cum deja am menționat, și Bălți, și Chișinău
+o să aibă câte o *copie* a tabelului de foi ale celuilalt oficiu,
+actualizată, zicem, o dată per sezon (2-3 luni).
+După ce ele se actualizează în sursă, sunt manual copiate pe celălalt nod.
+Aceasta se numește o *replică*.
+
+Nu vom trebui să facem un sistem complicat care automat actualizează replica
+în timp real, deoarece tabelul o să fie actualizat foarte rar.
+Ajunge un script care rulează o dată per sezon, și adaugă înregistrările noi,
+ori pur și simplu copiază întregul tabel.
+
+Pentru demonstrație, vom realiza partiționarea orizontală a tabelului Foaie după câmpul `tip`,
+adică de fapt vom crea mai multe tabele cu toate câmpurile din afară lui tip,
+și vom pune în fiecare din ele doar înregistrările cu tipul respectiv.
+Adică vom avea câte o tabelă pentru fiecare tip de foaie: 
+`Foaie_Munte`, `Foaie_Mare`, `Foaie_Excursie`.
+
+
+## 3. Proiectarea bazei de date distribuite ca proiecţia pe schema alocării geografice a subdiviziunilor organizaţiei
+
+![](diagram2.svg)
+
