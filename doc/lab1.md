@@ -197,7 +197,7 @@ ca să putem seta un link de pe celelaltă bază de date, și invers.
 
 Configurarea de bază la acest serviciu este minimă:
 
-[neon](../images/neon.png)
+![neon](./images/neon.png)
 
 Ca să ne conectăm la această bază de date și să rulăm interogări,
 ar trebui să intalez ceva client care permite să fac asta.
@@ -206,7 +206,7 @@ Am găsit [pgAdmin](https://www.pgadmin.org/).
 Am configurat o conexiune nouă în pgAdmin. 
 Despre asta este și în [documentația lor](https://neon.tech/docs/connect/connect-postgres-gui).
 
-[pgAdmin](../images/pgadmin-connect.png).
+![pgAdmin](./images/pgadmin-connect.png).
 
 Urmează să creez tabelele de bază.
 La început voi crea tabelul Foi fără partiționare.
