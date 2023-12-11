@@ -455,7 +455,7 @@ ALTER TABLE Cumparatura
 ```
 
 Dar nici asta nu putem folosi, zice "cannot use subquery in check constraint"
-deoarece am folosit un SELECT înăuntru.
+deoarece am folosit un `SELECT` înăuntru.
 Așa că rămânem fără chei străine, ci pur și simplu cu câmpuri.
 
 Să notez, că cu totuși că partițiile includ câmpul `tip`,
