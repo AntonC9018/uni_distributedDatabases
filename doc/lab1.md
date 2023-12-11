@@ -168,3 +168,299 @@ Adică vom avea câte o tabelă pentru fiecare tip de foaie:
 
 ![](diagram2.svg)
 
+
+## Proiectarea primului nod pe PostreSQL
+
+### Selectarea host-ului de o bază de date
+
+GitHub oferă un pachet pentru dezvoltatori care include credite pentru o mulțime de servicii.
+Între ele sunt doar unele permit hosting-ul unei baze de date relaționale: Azure și Heroku.
+
+Azure permite crearea unei baze de date PostgreSQL, însă PostreSQL-ul acolo este prea scump
+(150+ de dolari per lună, pe când pachetul conține doar 100 de dolari).
+Însă, Azure permite crearea unei baze de date SqlServer al lui Microsoft
+care-i mult mai ieftină (de la aprox. 5 dolari pe lună).
+Este logic că Microsoft și-ar promova produsul propriu pe platforma lor.
+
+Heroku dă un credit de 13 de dolari per lună, însă cere să conectez un card bancar,
+ceea ce eu nu vreau să fac, ca să nu fiu taxat după ce se termină creditul după ce uit
+de proiect.
+
+Am mai căutat niște servicii gratuite care permite a folosi o bază de date PostreSQL slabă
+pentru teste, și am găsit Neon. 
+Oferă un tier gratuit destul de generos care permite să setez o bază de date PostreSQL.
+Este important ca mașina să fie vizibilă pe internet în mod normal,
+ca să putem seta un link de pe celelaltă bază de date, și invers. 
+
+
+### Configurarea bazei de date
+
+Configurarea de bază la acest serviciu este minimă:
+
+[neon](../images/neon.png)
+
+Ca să ne conectăm la această bază de date și să rulăm interogări,
+ar trebui să intalez ceva client care permite să fac asta.
+Am găsit [pgAdmin](https://www.pgadmin.org/).
+
+Am configurat o conexiune nouă în pgAdmin. 
+Despre asta este și în [documentația lor](https://neon.tech/docs/connect/connect-postgres-gui).
+
+[pgAdmin](../images/pgadmin-connect.png).
+
+Urmează să creez tabelele de bază.
+La început voi crea tabelul Foi fără partiționare.
+
+Am folosit ChatGPT pentru a-mi genera codul care crează tabelele pentru a sălva timpul.
+
+```
+Generate the postgresql sql code that creates tables that correspond to the following mermaid entity diagram:
+... sursa diagramei de mai sus ...
+```
+
+```sql
+CREATE TABLE Client (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE,
+    nume VARCHAR(255),
+    prenume VARCHAR(255)
+);
+
+CREATE TYPE FoaieTip AS ENUM ('Munte', 'Mare', 'Excursie');
+
+CREATE TABLE Foaie (
+    id SERIAL PRIMARY KEY,
+    tip FoaieTip,
+    pret MONEY,
+    providedTransport BOOLEAN,
+    hotel VARCHAR(255)
+);
+
+CREATE TABLE Rezervare (
+    ordNum SERIAL PRIMARY KEY,
+    clientId INT REFERENCES Client(id),
+    foaieId INT REFERENCES Foaie(id),
+    dataRezervarii DATE,
+    gaj MONEY
+);
+
+CREATE TABLE Cumparatura (
+    ordNum SERIAL PRIMARY KEY,
+    clientId INT REFERENCES Client(id),
+    foaieId INT REFERENCES Foaie(id),
+    dataCumpararii DATE
+);
+
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_clientId
+    FOREIGN KEY (clientId)
+    REFERENCES Client(id);
+
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_clientId
+    FOREIGN KEY (clientId)
+    REFERENCES Client(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+
+```
+
+Am citit mai mult despre sintaxele. 
+* `SERIAL` este ca `IDENTITY(1, 1)` în SQLServer, deci adaugă autoincrement.
+  Ideal pentru chei.
+
+* PostgreSQL are tipul `BOOLEAN` care este echivalent cu `BIT` în SQLServer.
+
+* [`ENUM`](https://www.postgresql.org/docs/current/datatype-enum.html) este acea quality of life feature
+  care îmi lipsește tare mult în SqlServer.
+  Păstrează valorile în 4 bytes, și le ordonează conform ordinii în declarare.
+
+
+Tot cu ChatGPT am generat niște înregistrări de test.
+
+```sql
+INSERT INTO Client (email, nume, prenume) VALUES
+    ('test1@example.com', 'Doe', 'John'),
+    ('test2@example.com', 'Smith', 'Jane'),
+    ('test3@example.com', 'Johnson', 'Bob');
+
+INSERT INTO Foaie (tip, pret, providedTransport, hotel) VALUES
+    ('Munte', 100.00, true, 'Hotel A'),
+    ('Mare', 150.00, false, 'Hotel B'),
+    ('Excursie', 200.00, true, 'Hotel C');
+
+INSERT INTO Rezervare (clientId, foaieId, dataRezervarii, gaj) VALUES
+    (1, 1, TO_DATE('2023-01-15', 'YYYY-MM-DD'), 50.00),
+    (2, 2, TO_DATE('2023-02-20', 'YYYY-MM-DD'), 75.00),
+    (3, 3, TO_DATE('2023-03-25', 'YYYY-MM-DD'), 100.00);
+
+INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES
+    (1, 1, TO_DATE('2023-01-10', 'YYYY-MM-DD')),
+    (2, 2, TO_DATE('2023-02-15', 'YYYY-MM-DD')),
+    (3, 3, TO_DATE('2023-03-20', 'YYYY-MM-DD'));
+```
+
+
+### Partiționarea tabelelor
+
+Nu-mi place cum sugerează să realizez partiționarea tabelelor în 
+[documentația de la PostgreSQL](https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-USING-INHERITANCE),
+folosind moștenirea.
+Data trecută când citeam informațiile, această metodă era unica, posibil am citit o versiune veche.
+
+PostreSQL de fapt oferă o posibilitate de a crea partiții cu 
+[`PARTITION OF`](https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-DECLARATIVE).
+Am să încerc să folosesc această metodă.
+În cazul nostru, deoarece vom avea doar 3 tipuri de foi, și câte o partiție pentru fiecare tip,
+nu trebuie să avem câmpul `tip` în tabelele partiționate.
+Asta poate fi atins folosind `LIST` partitioning.
+
+Deoarece nu este posibil să creem partiții pentru un tabel deja existent,
+trebuie să facem niște prelucrări:
+
+* Renumim tabelul veche la `Foaie_old`.
+
+* Creăm un tabel nou, partiționat după `tip`, cu numele `Foaie`.
+
+* Dăm drop la toate constrângerile de chei străine care se referă la `Foaie_old`.
+
+* Creăm partițiile pentru `Foaie`.
+
+* Introducem datele din tabelul veche în partiții.
+
+* Dăm drop la tabelul veche.
+
+* Restabilim constrângerile de chei străine.
+
+```sql
+ALTER TABLE Foaie RENAME TO Foaie_old;
+
+CREATE TABLE Foaie (
+    id SERIAL PRIMARY KEY,
+    pret MONEY,
+    providedTransport BOOLEAN,
+    hotel VARCHAR(255),
+    tip FoaieTip
+) PARTITION BY LIST (tip);
+
+ALTER TABLE Rezervare
+    DROP CONSTRAINT fk_Rezervare_foaieId;
+ALTER TABLE Cumparatura
+    DROP CONSTRAINT fk_Cumparatura_foaieId;
+ALTER TABLE Rezervare
+    DROP CONSTRAINT rezervare_foaieid_fkey;
+ALTER TABLE Cumparatura
+    DROP CONSTRAINT cumparatura_foaieid_fkey;
+
+CREATE TABLE Foaie_Munte PARTITION OF Foaie FOR VALUES IN ('Munte');
+CREATE TABLE Foaie_Mare PARTITION OF Foaie FOR VALUES IN ('Mare');
+CREATE TABLE Foaie_Excursie PARTITION OF Foaie FOR VALUES IN ('Excursie');
+
+INSERT INTO Foaie_Munte (id, pret, providedTransport, hotel, tip)
+    SELECT id, pret, providedTransport, hotel, tip FROM Foaie_old WHERE tip = 'Munte';
+INSERT INTO Foaie_Mare (id, pret, providedTransport, hotel, tip)
+    SELECT id, pret, providedTransport, hotel, tip FROM Foaie_old WHERE tip = 'Mare';
+INSERT INTO Foaie_Excursie (id, pret, providedTransport, hotel, tip)
+    SELECT id, pret, providedTransport, hotel, tip FROM Foaie_old WHERE tip = 'Excursie';
+  
+DROP TABLE Foaie_old;
+
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+```
+
+Primim eroarea "unique constraint on partitioned table must include all partitioning columns",
+când încercăm să creăm tabela partiționată.
+Aceasta este logic, deoarece id-ul o să fie incrementat separat în fiecare partiție (?).
+Problema este menționată și [aici în documentație](https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-DECLARATIVE-LIMITATIONS):
+
+> To create a unique or primary key constraint on a partitioned table, the partition keys must not include any expressions or function calls and the constraint's columns **must include all of the partition key columns**. This limitation exists because the individual indexes making up the constraint can only directly enforce uniqueness within their own partitions; therefore, the partition structure itself must guarantee that there are not duplicates in different partitions.
+
+Asta parcă implică și ceea că id-ul o să fie incrementat separat. Nu dorim asta.
+Însă cred că nu este posibil de rezolvat, lăsând doar id-ul în calitate de cheie primară.
+Asta cred că nu este o problemă la chei străine.
+
+Am să fac un mic test pentru a mă asigura că de fapt id-urile sunt generate separat în fiecare partiție.
+
+```sql
+CREATE TABLE test1 (
+    id SERIAL,
+    hello text,
+    v int
+) PARTITION BY LIST (hello);
+
+CREATE TABLE test1_a PARTITION OF test1 FOR VALUES IN ('a');
+CREATE TABLE test1_b PARTITION OF test1 FOR VALUES IN ('b');
+
+INSERT INTO test1 (hello, v) VALUES ('a', 1);
+INSERT INTO test1 (hello, v) VALUES ('b', 2);
+INSERT INTO test1_a (hello, v) VALUES ('a', 3);
+INSERT INTO test1_b (hello, v) VALUES ('b', 4);
+
+SELECT * FROM test1
+```
+
+| id | hello | v |
+|----|-------|---|
+| 1  | "a"   | 1 |
+| 3  | "a"   | 3 |
+| 2  | "b"   | 2 |
+| 4  | "b"   | 4 |
+
+Deci de fapt nu am avut dreptate, și acestea au fost generate separat.
+Din această cauză putem să facem cheia primară din `id` și `tip` fără griji.
+
+```sql
+CREATE TABLE Foaie (
+    id SERIAL,
+    pret MONEY,
+    providedTransport BOOLEAN,
+    hotel VARCHAR(255),
+    tip FoaieTip,
+    PRIMARY KEY (id, tip)
+) PARTITION BY LIST (tip);
+```
+
+Toate comenzile se rulează, din afară creării cheilor străine.
+Totuși este necesar ca această cheie să fie cheia primară.
+
+Am căutat, și parcă este imposibil de realizat asta.
+Putem însă simula asta cu un check constraint.
+Asta n-o să fie performant, și n-o să folosim asta probabil în lumea reală.
+Este cam trist.
+
+```sql
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_foaieId
+    CHECK (foaieId IN (SELECT id FROM Foaie));
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_foaieId
+    CHECK (foaieId IN (SELECT id FROM Foaie));
+```
+
+Dar nici asta nu putem folosi, zice "cannot use subquery in check constraint"
+deoarece am folosit un SELECT înăuntru.
+Așa că rămânem fără chei străine, ci pur și simplu cu câmpuri.
+
+Să notez, că cu totuși că partițiile includ câmpul `tip`,
+cred că acesta nu este păstrat pe disk.
+Nu ar fi asta logic, deoarece informația această deja există în ceea care partiție noi folosim.
+Deci presupun că când are loc un insert în una din partiții,
+o valoare pentru `tip` există doar din acea cauză că tipul tabelului
+este același și la definiție, și la partiții.
