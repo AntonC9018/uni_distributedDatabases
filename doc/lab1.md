@@ -464,3 +464,97 @@ Nu ar fi asta logic, deoarece informația această deja există în ceea care pa
 Deci presupun că când are loc un insert în una din partiții,
 o valoare pentru `tip` există doar din acea cauză că tipul tabelului
 este același și la definiție, și la partiții.
+
+
+### Configurarea unui link
+
+
+## SqlServer
+
+### Configurarea unui SqlServer pe Azure
+
+Configurarea unei baze de date pe Azure are mai mulți pași
+și opțiuni care trebuie să fie confirmate ori specificate deodată la creare.
+
+![azure](./images/azure-sql-server.png)
+
+Am configurat securitatea ca să permit accesul din orice adresă IP.
+Vom dori să configurăm accesul de pe serverul de pe Neon, adresa la care eu nu o cunosc,
+deci pentru simplitate am făcut așa.
+
+![](./images/all-addresses.png)
+
+Ne putem conecta la server folosind SqlServer Management Studio.
+
+![](./images/sql-server-ms.png)
+
+
+### Crearea tabelelor de bază din Bălți
+
+```sql
+CREATE TABLE Client (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE,
+    nume VARCHAR(255),
+    prenume VARCHAR(255));
+
+CREATE TABLE Foaie (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    tip VARCHAR(10),
+    pret MONEY,
+    providedTransport BIT,
+    hotel VARCHAR(255));
+
+CREATE TABLE Rezervare (
+    ordNum INT IDENTITY(1,1) PRIMARY KEY,
+    clientId INT,
+    foaieId INT,
+    dataRezervarii DATE,
+    gaj MONEY);
+
+CREATE TABLE Cumparatura (
+    ordNum INT IDENTITY(1,1) PRIMARY KEY,
+    clientId INT,
+    foaieId INT,
+    dataCumpararii DATE);   
+
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_clientId
+    FOREIGN KEY (clientId)
+    REFERENCES Client(id);
+
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_clientId
+    FOREIGN KEY (clientId)
+    REFERENCES Client(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+```
+
+Și adăugăm niște date de test.
+
+```sql
+INSERT INTO Client (email, nume, prenume) VALUES ('anton@email.com', 'Anton', 'Ivan');
+INSERT INTO CLIENT (email, nume, prenume) VALUES ('ussr@gmail.com', 'Hello', 'Russia');
+INSERT INTO CLIENT (email, nume, prenume) VALUES ('gg@gg.ru', 'Fella', 'Johns');
+
+INSERT INTO Foaie (tip, pret, providedTransport, hotel) VALUES ('Munte', 100.00, 1, 'Maldivi');
+INSERT INTO Foaie (tip, pret, providedTransport, hotel) VALUES ('Mare', 150.00, 0, '5 star');
+INSERT INTO Foaie (tip, pret, providedTransport, hotel) VALUES ('Excursie', 200.00, 1, 'Beste');
+
+INSERT INTO Rezervare (clientId, foaieId, dataRezervarii, gaj) VALUES (1, 1, '2023-01-15', 50.00);
+INSERT INTO Rezervare (clientId, foaieId, dataRezervarii, gaj) VALUES (2, 2, '2023-02-20', 75.00);
+INSERT INTO Rezervare (clientId, foaieId, dataRezervarii, gaj) VALUES (3, 3, '2023-03-25', 100.00);
+
+INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (1, 1, '2023-01-10');
+INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (2, 2, '2023-02-15');
+INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (3, 3, '2023-03-20');
+```
