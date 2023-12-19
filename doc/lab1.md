@@ -465,10 +465,6 @@ Deci presupun că când are loc un insert în una din partiții,
 o valoare pentru `tip` există doar din acea cauză că tipul tabelului
 este același și la definiție, și la partiții.
 
-
-### Configurarea unui link
-
-
 ## SqlServer
 
 ### Configurarea unui SqlServer pe Azure
@@ -558,3 +554,161 @@ INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (1, 1, '2023-
 INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (2, 2, '2023-02-15');
 INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES (3, 3, '2023-03-20');
 ```
+
+
+### Partiționarea tabelelor
+
+Documentația de pe [această pagină](https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes?view=sql-server-ver16) conține informații despre partiționarea tabelelor.
+
+[Aici](https://learn.microsoft.com/en-us/sql/relational-databases/partitions/create-partitioned-tables-and-indexes?view=sql-server-ver16) se descriu pașii necesare
+pentru a crea partiții.
+
+1. Crearea unui sau a mai multe filegroup-uri, care o să țină datele partițiilor.
+   Deoarece pasul acesta se consideră ca optimizare și este opțional, îl voi omite.
+
+2. Create unei funcții de partiție. 
+   Acesta specifică intervalele la care va fi divizat tabelul.
+   Partiționarea după valori (ca LIST la PostreSQL) cred că nu este posibilă,
+   este doar RANGE.
+
+3. Crearea unei scheme de partiționare, însă asta este relevant doar în cazul
+   în care ați creat filegroup-uri, deoarece ține de repartizarea între aceste.
+   Altfel, este un pas superfluos, dar fără asta nu va lucra.
+
+4. Aplicarea schemei de partiționare la tabel.
+
+
+Notez că în [docul](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql?view=sql-server-ver16#arguments) 
+comenzii `CREATE PARTITION FUNCTION` la `input_parameter_type` 
+este specificat că nu putem folosi `VARCHAR(MAX)`, însă se permite folosirea unui
+`VARCHAR` cu o dimensiune specificată, deci o vom putea folosi pentru tip.
+
+Unica problema este că o să trebuiască să specificăm ca RANGE,
+din care cauză serverul n-o să aibă destulă informație pentru a putea (potențial)
+realiza automat eliminarea acelei coloane `tip` valoarea pentru care ar putea fi dedusă
+din partiție în care se află înregistrarea.
+Însă o voi ignora, deoarece o soluție cred că nu există.
+
+```sql
+CREATE PARTITION FUNCTION [tipPartitionFunc](VARCHAR(10))
+AS RANGE LEFT FOR VALUES ('Mare', 'Munte', 'Excursie');
+```
+
+Notez:
+
+- Nu sortez manual valorile din listă în mod alfabetic,
+  deoarece aceasta o să se facă automat.
+
+  ```
+    Warning: Range value list for partition function 'tipPartitionFunc' is not sorted by value. Mapping of partitions to filegroups during CREATE PARTITION SCHEME will use the sorted boundary values if the function 'tipPartitionFunc' is referenced in CREATE PARTITION SCHEME.
+  ```
+
+- Am folosit `LEFT`, deoarece doresc ca partițiile să *includă* valorile specificate.
+
+  Dacă specific `RIGHT` în loc de `LEFT`, atunci de ex. partiția pentru a doua partiție
+  (Mare) o să includă toate valorile, începând cu prima (Excursie), 
+  până la valoarea dată (Mare), exclusiv, sortate alfabetic.
+
+  Rezultatul de fapt în cazul acesta o să fie cam identic, 
+  doar că partiția deriată din regula Mare o să includă Excursie,
+  a lui Munte o să includă Mare, și a lui Excursie o să fie goală,
+  iar partiția implicită o să includă Munte.
+  Zic că o să fie identic, deoarece primim o partiție nefolosită în ambele cazuri,
+  deoarece niciodată nu introducem valori pentru tip care nu-s în acestă listă.
+
+  Deoarece am folosit `LEFT`, partiția pentru regula cu Munte 
+  o să includă toate înregistrările cu tipul Munte,
+  și tot așa mai departe pentru fiecare altă regulă.
+
+
+Partițiile o să fie următoarele:
+
+1. Toate șirurile de caractere care se află înainte de `Excursie` inclusiv, sortat alfabetic.
+2. Tot așa pentru `Mare`.
+3. Tot așa pentru `Munte`.
+4. Toate șirurile de caractere care se află după `Munte` exclusiv, 
+   sortat alfabetic (partiția implicită).
+
+În cazul acesta s-ar dori ca partiția implicită să joace rolul unui catch-all,
+să prindă cazurile când tipul nu este din lista valorilor specificate,
+însă așa ceva parcă nu este posibil.
+
+Acum creăm schema de partiționare, doar pentru filegroup-ul primar:
+
+```sql
+CREATE PARTITION SCHEME [tipPartitionScheme]
+AS PARTITION [tipPartitionFunc]
+ALL TO ([PRIMARY]);
+```
+
+Nu este posibil a modifica un tabel existent ca să-l facem partiționat,
+trebuie numaidecât să-l recreăm.
+Pentru exemplu, voi face așa ca datele să fie păstrate, deci ca am făcul și la PostgreSQL.
+În proces vom vedea cum se comportă constrângerile și cheile.
+
+```sql
+-- 1. Ștergem constrângerile de chei străine către Foaie.
+ALTER TABLE Rezervare DROP CONSTRAINT fk_Rezervare_foaieId;
+ALTER TABLE Cumparatura DROP CONSTRAINT fk_Cumparatura_foaieId;
+
+-- 2. Renumim Foaie
+exec sp_rename 'Foaie', 'Foaie_old';
+
+-- 3. Creăm Foaie partiționat
+CREATE TABLE Foaie (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    pret MONEY,
+    providedTransport BIT,
+    hotel VARCHAR(255),
+    tip VARCHAR(10)
+) ON tipPartitionScheme(tip);
+
+-- Stop it from trying to generate the ids automatically:
+SET IDENTITY_INSERT Foaie ON;
+
+-- 4. Copiem datele în partiții
+INSERT INTO Foaie (id, pret, providedTransport, hotel, tip)
+SELECT id, pret, providedTransport, hotel, tip
+FROM Foaie_old;
+
+-- 5. Ștergem Foaie veche
+DROP TABLE Foaie_old;
+
+-- 6. Restabilim constrângerile de chei străine
+ALTER TABLE Rezervare
+    ADD CONSTRAINT fk_Rezervare_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+
+ALTER TABLE Cumparatura
+    ADD CONSTRAINT fk_Cumparatura_foaieId
+    FOREIGN KEY (foaieId)
+    REFERENCES Foaie(id);
+```
+
+```
+Msg 1908, Level 16, State 1, Line 2
+Column 'tip' is partitioning column of the index 'PK__Foaie__D37209B9'. Partition columns for a unique index must be a subset of the index key.
+Msg 1750, Level 16, State 1, Line 2
+Could not create constraint or index. See previous errors.
+```
+
+Deci avem o eroare exact ca la PostgreSQL.
+Trebuie să facem ca `tip` să fie parte din cheia primară.
+
+```sql
+CREATE TABLE Foaie (
+    id INT IDENTITY(1, 1),
+    pret MONEY,
+    providedTransport BIT,
+    hotel VARCHAR(255),
+    tip VARCHAR(10),
+    PRIMARY KEY (id, tip)
+) ON tipPartitionScheme(tip);
+```
+
+Și este clar că nu putem avea chei străine către `Foaie` din tot aceeași cauză.
+
+
+## Setarea link-urilor
+
