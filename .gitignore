@@ -2,3 +2,6 @@
 test.db
 *.html
 *.pdf
+
+# The app reads the connection strings and stuff from this
+configuration.json

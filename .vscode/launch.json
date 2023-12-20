@@ -8,6 +8,7 @@
             "debugAdapter": "dlv-dap",
             "mode": "debug",
             "program": "${workspaceFolder}/source/webapp",
+            "cwd": "${workspaceFolder}",
             "args": [
             ],
             "env": {
@@ -15,6 +16,17 @@
                 "CXX": "zig c++",
                 "CC": "zig cc",
             }
+        },
+        {
+            "name": "Launch Copy Script",
+            "type": "go",
+            "request": "launch",
+            "debugAdapter": "legacy",
+            "mode": "debug",
+            "program": "${workspaceFolder}/source/copy_script",
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ]
         }
     ]
 }
