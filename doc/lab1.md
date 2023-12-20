@@ -712,3 +712,67 @@ CREATE TABLE Foaie (
 
 ## Setarea link-urilor
 
+Am citit mai multe informații la această temă, voi sumariza unele lucruri.
+
+### SQL Server --> PostgreSQL
+
+Setarea unui link este posibilă în două moduri:
+
+- Serverul PostgreSQL să conforme la o interfață care SQL Server-ul suportă.
+  Pentru asta poate fi folosită tehnologia ODBC.
+  Am găsit și [un driver pentru PostgreSQL de ODBC](https://odbc.postgresql.org/).
+
+- Serverul SQL Server să cunoască cum să interacționeze cu PostgreSQL.
+  Acesta se poate realiza prin instalarea 
+  [unui furnizor OLE DB](https://www.postgresql.org/about/news/postgresql-native-oledb-provider-pgnp-130-3264-bit-released-1153/)
+  care permite accesul la PostgreSQL.
+
+Din partea de SQL Server, se poate folosi:
+
+- [PolyBase](https://learn.microsoft.com/en-us/sql/relational-databases/polybase/polybase-guide?view=sql-server-ver16), 
+  dacă baza de date țintă suprtă ODBC, sau este un alt sistem suportat nativ.
+  Aceasta [este de fapt posibil de setat pe o bază de date de pe Azure](https://azure.microsoft.com/en-us/blog/querying-remote-databases-in-azure-sql-db/).
+
+- [Linked server](https://learn.microsoft.com/en-us/sql/relational-databases/linked-servers/linked-servers-database-engine?view=sql-server-ver16) printr-un furnizor OLE DB.
+  Aceasta nu este suportat pe Azure 
+  (tot este menționat în linkul la setare lui PolyBase pe Azure de mai sus).
+
+Varianta cu Linked server și un furnizor OLE DB nu este posibilă pe Azure,
+deci o eliminăm imediat.
+
+Varianta cu PolyBase și ODBC ar fi posibilă dacă PolyBase ar suporta PostgreSQL
+sau dacă am putea instala un driver ODBC pe PostgreSQL.
+Cu părere de rău, PolyBase nu-l suportă direct, și 
+nu pot găsi informații în documentația lor Neon (serviciul care îl folosesc),
+și nici nu-s așa informații prin chat-urile de suport ale lor.
+
+Din această cauză, este imposibil să setez un link de pe SQL Server la PostgreSQL,
+esențial din acea cauză că nu am control asupra infrastructurii și nu pot instala 
+tot ce vreau pe serverii bazelor de date.
+
+### PostgreSQL --> SQL Server
+
+Aceasta este posibil folosind un [data wrapper](https://wiki.postgresql.org/wiki/Foreign_data_wrappers),
+care este un fel de plugin instalat pe PostgreSQL care permite să interogăm
+baze de date externe.
+Acesta este descris în standardul [SQL/MED](https://www.wikiwand.com/en/SQL/MED).
+
+Pentru asta, ar trebui să instalez acel data wrapper pe serverul de pe Neon,
+însă, iarăși, așa ceva nu este în documentație.
+Am încercat să enumăr toate data-wrapper-urile existente (мало ли), dar tabelul era gol.
+
+```
+SELECT * FROM pg_foreign_data_wrapper;
+```
+
+Deci sunt destul de sigur că tot nu este posibil.
+
+
+### La nivel de aplicație
+
+Cel mai degrabă o să realizez asta deja în aplicație, unde putem avea mai mult control.
+Însă, nu vom putea face de ex. join-uri între mai multe tabele, și pur și simplu
+să rulăm interogări independente și să unim rezultatele după asta.
+
+Asta poate fi realizat prin crearea a două conexiuni,
+rularea comenzilor între ele separat, și adunarea rezultatelor manuală în cod.
