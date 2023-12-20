@@ -776,3 +776,41 @@ să rulăm interogări independente și să unim rezultatele după asta.
 
 Asta poate fi realizat prin crearea a două conexiuni,
 rularea comenzilor între ele separat, și adunarea rezultatelor manuală în cod.
+
+
+## Scripturile de copiere a foilor
+
+### PostgreSQL --> SQL Server
+
+PostgreSQL poate citi și scrie rezultatele unei interogări în (din) stdout (stdin), 
+folosind [`COPY`](https://www.postgresql.org/docs/current/sql-copy.html) și `COPY FROM`.
+Acesta poate fi folosit pentru a atinge scopul dat.
+
+`COPY` permite să specificăm formatul de output. 
+Implicit este `text`, mai putem folosi `csv` ori `binary`.
+Mai degrabă voi folosi `csv`, deoarece comanda de import la SQL Server acceptă acest format.
+
+Mai departe, vom avea nevoie să scriem datele citite în tabelul corect de pe SQL Server.
+Asta aș putea face cu un stream CSV, ca la `COPY FROM` din PostgreSQL, folosind comanda
+[`COPY INTO`](https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql?view=azure-sqldw-latest&preserve-view=true).
+Însă, acesta nu permite să specificăm un stream, ci doar un fișier (accesibil pentru bază de date).
+
+Avem diferite opțiuni:
+
+- Să rulăm utilita [BCP](https://learn.microsoft.com/en-us/azure/architecture/data-science-process/move-sql-server-virtual-machine#insert-tables-bcp) în linie de comandă;
+
+- Folosind [BULK INSERT](https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql?view=sql-server-ver16), 
+  însă acesta tot doar suportă un fișier local pentru baza de date.
+  Aparent, acesta poate lucra cu *named pipes* din Win32, dar probabil nu pot folosi asta.
+
+- Folosind interfața grafică la SSMS. 
+  Această variantă nu o putem folosi, deoarece nu poate fi automatizată.
+
+- [BULK COPY](https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/bulk-copy-operations-sql-server?view=sql-server-ver16).
+  Asta nu este o comandă SQL, ci o funcție din ADO.NET.
+  Permite scrierea datelor de fapt dintr-un stream binar.
+
+Deoarece doresc să lucrez în Go pentru acest proiect, am să încerc a face asta în Go.
+Go are [o librărie pentru accesarea lui SQL Server](https://github.com/denisenkom/go-mssqldb)
+care suportă și `BULK COPY`.
+[Go suportă și PostgreSQL](https://github.com/lib/pq), deci nu ar trebui să fie probleme.
