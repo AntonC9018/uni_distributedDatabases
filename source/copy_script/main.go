@@ -1,45 +1,19 @@
-package main
+package copyscript
 
 import (
-	"github.com/spf13/viper"
-
 	"database/sql"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/spf13/viper"
+	"golang.org/x/text/unicode/rangetable"
 
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/lib/pq"
-
-	"fmt"
 )
 
-type ConnectionInfo struct {
-	DatabaseName     string
-	Type             string
-	ConnectionString string
-}
-
-type DatabaseType int
-
-const (
-	Postgres DatabaseType = iota
-	SqlServer
-)
-
-type NamedConnection struct {
-	Connection *sql.DB
-	Name       string
-	Type       DatabaseType
-}
-
-type DatabaseConnectionsContext struct {
-	MainDatabaseIndex   int
-	PostgresConnections []NamedConnection
-}
-
-func (context *DatabaseConnectionsContext) MainDatabase() *NamedConnection {
-	return &context.PostgresConnections[context.MainDatabaseIndex]
-}
-
-func main() {
+func readConfig() (*viper.Viper, error) {
 	config := viper.New()
 	config.SetConfigName("configuration")
 	config.SetConfigType("json")
@@ -47,79 +21,122 @@ func main() {
 	{
 		err := config.ReadInConfig()
 		if err != nil {
-			_, configFileNotFound := err.(viper.ConfigFileNotFoundError)
-			if configFileNotFound {
-				panic(fmt.Errorf("config file not found: %w", err))
-			} else {
-				panic(fmt.Errorf("error while reading config file: %w", err))
-			}
+            return config, err
 		}
 	}
-
-	var databaseInfos []ConnectionInfo
-	{
-		err := config.UnmarshalKey("databases", &databaseInfos)
-		if err != nil {
-			panic(fmt.Errorf("error while reading out database connection strings: %w", err))
-		}
-	}
-
-	mainDatabaseIndex := getDatabaseIndex(config, databaseInfos)
-	if mainDatabaseIndex == -1 {
-		panic(fmt.Errorf("main database not found"))
-	}
-
-	databaseConnections := make([]*sql.DB, len(databaseInfos))
-	for i := range databaseInfos {
-		success, databaseType := getDatabaseType(databaseInfos[i].Type)
-		if !success {
-			panic(fmt.Errorf("invalid database type: %s", databaseInfos[i].Type))
-		}
-
-		var databaseProviderString string
-		switch databaseType {
-		case Postgres:
-			databaseProviderString = "postgres"
-		case SqlServer:
-			databaseProviderString = "sqlserver"
-		default:
-			// unreachable
-			panic("unreachable")
-		}
-
-		database, err := sql.Open(databaseProviderString, databaseInfos[i].ConnectionString)
-		if err != nil {
-			panic(fmt.Errorf("error while opening database connection: %w", err))
-		}
-
-		databaseConnections[i] = database
-	}
-
-	fmt.Println("All seems to be good!")
+    return config, nil
 }
 
-func getDatabaseType(databaseType string) (bool, DatabaseType) {
-	switch databaseType {
-	case "postgresql":
-		return true, Postgres
-	case "sqlserver":
-		return true, SqlServer
-	default:
-		return false, -1
-	}
+func closeTransactions(transactions []*sql.Tx) {
+    for _, tx := range transactions {
+        tx.Rollback()
+    }
 }
 
-func getDatabaseIndex(config *viper.Viper, databaseInfos []ConnectionInfo) int {
-	mainDatabaseName := config.GetString("MainDatabase")
-	if mainDatabaseName == "" {
-		return 0
-	}
-	// find index of main database
-	result := -1
-	for i := range databaseInfos {
-		if databaseInfos[i].DatabaseName == mainDatabaseName {
-			result = i
-		}
-	}
-	return result
+func main() {
+    var config *viper.Viper
+    {
+        var err error
+        config, err = readConfig()
+        if err != nil {
+            _, configFileNotFound := err.(viper.ConfigFileNotFoundError)
+            if configFileNotFound {
+                log.Fatalf("config file not found: %v\n", err)
+            } else {
+                log.Fatalf("error while reading config file: %v\n", err)
+            }
+            os.Exit(-1)
+        }
+    }
+
+    var dbContext DatabaseConnectionsContext
+    {
+        var err error
+        dbContext, err = establishConnectionsFromConfig(config)
+        if err != nil {
+            log.Fatalf("Error while establishing connections: %v \n");
+            os.Exit(-1)
+        }
+    }
+
+
+    // Copy from all databases to all others (star).
+    // Create new tables if they don't exist.
+    // Partition the tables just like in the other db (so we want the command here huh).
+    // Copy the data by using one of the methods (see the doc).
+    // The tables Foaie and Client are the ones to be copied.
+    connections := dbContext.Connections
+
+    // Open a transaction for all of these.
+    transactions := make([]*sql.Tx, len(connections))
+    for i := range connections {
+        connection := &connections[i]
+        tx, err := connection.Connection.Begin()
+        if err != nil {
+            log.Fatalf("Error while opening transaction: %v \n", err)
+            closeTransactions(transactions[0 : i])
+            os.Exit(-1)
+        }
+
+        transactions[i] = tx
+    }
+
+    for copyFromIndex := range connections {
+        connectionFrom := &connections[copyFromIndex]
+
+        for copyToIndex := range connections {
+            if (copyToIndex == copyFromIndex) {
+                continue
+            }
+
+            connectionTo := &connections[copyToIndex]
+            sourceTableName := "Client"
+            targetTableName := fmt.Sprintf("%s_%s", sourceTableName, connectionTo.Name)
+
+            // Run script to create targetTableName if it doesn't exist
+            // Ideally, this should check the types in the other db maybe? But that's complicated.
+            var maybeCreateTableQueryTemplate string 
+            switch (connectionFrom.Type) {
+                case Postgres:
+                    maybeCreateTableQueryTemplate = `
+                        if not exists (
+                            select 1
+                            from information_schema.tables
+                            where table_name = '%[1]s'
+                        ) then
+                            CREATE TABLE %[1]s (
+                                id SERIAL PRIMARY KEY,
+                                email VARCHAR(255) UNIQUE,
+                                nume VARCHAR(255),
+                                prenume VARCHAR(255)
+                            );
+                        end if;
+                    `
+                case SqlServer:
+                    maybeCreateTableQueryTemplate = `
+                        if not exists (
+                            select 1
+                            from information_schema.tables
+                            where table_name = '%[1]s'
+                        ) begin
+                            CREATE TABLE %[1]s (
+                                id INT PRIMARY KEY,
+                                email NVARCHAR(255) UNIQUE,
+                                nume NVARCHAR(255),
+                                prenume NVARCHAR(255)
+                            );
+                        end;
+                    `
+                default:
+                    panic("unreachable")
+            }
+            maybeCreateTableQueryString := fmt.Sprintf(maybeCreateTableQueryTemplate, targetTableName)
+
+            result, err := connectionFrom.Connection.Exec(maybeCreateTableQueryString)
+            if err == nil {
+
+            }
+        }
+    }
 }
+

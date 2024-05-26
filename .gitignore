@@ -2,6 +2,8 @@
 test.db
 *.html
 *.pdf
+source/webapp/webapp
+source/copy-script/copy-script
 
 # The app reads the connection strings and stuff from this
 configuration.json

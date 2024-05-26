@@ -422,7 +422,7 @@ SELECT * FROM test1
 | 2  | "b"   | 2 |
 | 4  | "b"   | 4 |
 
-Deci de fapt nu am avut dreptate, și acestea au fost generate separat.
+Deci de fapt nu am avut dreptate, și acestea n-au fost generate separat.
 Din această cauză putem să facem cheia primară din `id` și `tip` fără griji.
 
 ```sql
@@ -643,7 +643,7 @@ ALL TO ([PRIMARY]);
 
 Nu este posibil a modifica un tabel existent ca să-l facem partiționat,
 trebuie numaidecât să-l recreăm.
-Pentru exemplu, voi face așa ca datele să fie păstrate, deci ca am făcul și la PostgreSQL.
+Pentru exemplu, voi face așa ca datele să fie păstrate, deci ca am făcut și la PostgreSQL.
 În proces vom vedea cum se comportă constrângerile și cheile.
 
 ```sql
