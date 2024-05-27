@@ -1,6 +1,8 @@
 package copyscript
 
 import (
+	"bytes"
+	"container/list"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -34,6 +36,79 @@ type DatabaseConnectionsContext struct {
 
 func (context *DatabaseConnectionsContext) MainDatabase() *NamedConnection {
 	return &context.Connections[context.MainDatabaseIndex]
+}
+
+func (context *DatabaseConnectionsContext) Destroy() {
+    closeConnections(context.Connections)
+}
+
+type DatabaseTransactionsContext struct {
+    DbContext *DatabaseConnectionsContext
+    Transactions []*sql.Tx
+}
+
+func (context *DatabaseTransactionsContext) Rollback() {
+    closeTransactions(context.Transactions)
+}
+
+type TransactionCommitResult struct {
+    Errors []error
+    AllTransactionsErrored bool
+}
+
+func (result TransactionCommitResult) IsError() bool {
+    return result.Errors != nil
+}
+
+func (err TransactionCommitResult) Error() string {
+	var b bytes.Buffer
+    if err.AllTransactionsErrored {
+        b.WriteString("all transactions have errored:")
+    } else {
+        b.WriteString("some transactions have errored, the databases might be in an irreversable inconsistent state:")
+    }
+	for _, child := range err.Errors {
+		b.WriteString("\n\t... ")
+        b.WriteString(child.Error())
+	}
+	return b.String()
+}
+
+func (context *DatabaseTransactionsContext) Commit() TransactionCommitResult {
+    var errors []error
+    for _, tx := range context.Transactions {
+        err := tx.Commit()
+        if err != nil {
+            errors = append(errors, err)
+        }
+    }
+    if (len(errors) == 0) {
+        return TransactionCommitResult{}
+    }
+    return TransactionCommitResult{
+        Errors: errors,
+        AllTransactionsErrored: len(errors) == len(context.Transactions),
+    }
+}
+
+func (context *DatabaseConnectionsContext) OpenTransactions() (DatabaseTransactionsContext, error) {
+    connections := context.Connections
+
+    transactions := make([]*sql.Tx, len(connections))
+    for i := range connections {
+        connection := &connections[i]
+        var err error
+        transactions[i], err = connection.Connection.Begin()
+        if err != nil {
+            closeTransactions(transactions[0 : i])
+            return DatabaseTransactionsContext{}, err
+        }
+    }
+
+    return DatabaseTransactionsContext{
+        Transactions: transactions,
+        DbContext: context,
+    }, nil
 }
 
 
