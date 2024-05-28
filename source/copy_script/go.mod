@@ -7,7 +7,6 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/spf13/viper v1.18.2
 	golang.org/x/text v0.14.0
-	gopkg.in/multierror.v1 v1.0.2
 )
 
 require (
