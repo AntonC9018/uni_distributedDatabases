@@ -52,6 +52,12 @@ func (context *DatabaseTransactionsContext) GetTransactionAndConnection(i int) (
     return context.Transactions[i], context.Connections[i]
 }
 
+func closeTransactions(transactions []*sql.Tx) {
+    for _, tx := range transactions {
+        tx.Rollback()
+    }
+}
+
 func (context *DatabaseTransactionsContext) Rollback() {
     closeTransactions(context.Transactions)
 }
