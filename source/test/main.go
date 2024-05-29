@@ -6,31 +6,38 @@ import (
 )
 
 func main() {
-    // Primitive values are boxed
-    {
-        var x = 0xFFFFFFFF
-        var i interface{} = x
-        fmt.Printf("Address of x: %x\n", &x)
-        fmt.Printf("Value of x: %x\n", x)
-        printInterfaceValueAsBytes(i)
-    }
-    // Pointers don't seem to be boxed
-    {
-        var x = 0xFFFFFFFF
-        var i interface{} = &x
-        fmt.Printf("Address of x: %x\n", &x)
-        fmt.Printf("Value of x: %x\n", x)
-        printInterfaceValueAsBytes(i)
-    }
+    var x = 0xFFFFFFFF
+    var px = &x
+    var iValue interface{} = x
+    var iPointer interface{} = px
+    var iValueFromPointer interface{} = *(iPointer.(*int))
+    fmt.Printf("Address of x: %x\n", &x)
+    fmt.Printf("Address of px: %x\n", &px)
+    fmt.Printf("Value of x: %x\n", x)
+    printInterfaceValueAsBytes(iValue, "iValue")
+    printInterfaceValueAsBytes(iPointer, "iPointer")
+    printInterfaceValueAsBytes(iValueFromPointer, "iValueFromPointer")
 }
 
-func printInterfaceValueAsBytes(i interface{}) {
-	// Get the raw pointer to the interface data
+func printInterfaceValueAsBytes(i interface{}, varName string) {
 	rawPtr := unsafe.Pointer(&i)
 
-	// Reinterpret the memory pointed to by rawPtr as a byte slice
 	byteSlice := (*[unsafe.Sizeof(i)]byte)(rawPtr)[:]
+    integerSlice := BytesToInts(byteSlice)
 
-	// Print the byte slice
-	fmt.Printf("Value stored in i as []byte: %x\n", byteSlice)
+	fmt.Printf("Value stored in %s as ints: ", varName)
+    for _, i := range integerSlice {
+        fmt.Printf("%8x ", i)
+    }
+    fmt.Println()
+}
+
+func BytesToInts(b []byte) []int {
+    intLen := int(unsafe.Sizeof(int(0)))
+	if len(b) % intLen != 0 {
+		panic("[]byte length must be a multiple of the size of int")
+	}
+
+    startPtrAsInt := (*int)(unsafe.Pointer(&b[0]))
+    return unsafe.Slice(startPtrAsInt, len(b) / intLen)
 }

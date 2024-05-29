@@ -62,11 +62,15 @@ type TransactionCommitResult struct {
 }
 
 func (result TransactionCommitResult) IsError() bool {
-    return result.Errors != nil
+    return len(result.Errors) != 0
 }
 
 func (err TransactionCommitResult) Error() string {
-	var b bytes.Buffer
+    if !err.IsError() {
+        return ""
+    }
+
+    var b bytes.Buffer
     if err.AllTransactionsErrored {
         b.WriteString("all transactions have errored:")
     } else {
