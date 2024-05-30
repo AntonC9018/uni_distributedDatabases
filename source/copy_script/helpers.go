@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-func copyFieldPointers(ptr interface{}, output []interface{}) []interface{} {
+func CopyFieldPointers(ptr interface{}, output []interface{}) []interface{} {
     valueInfo := reflect.ValueOf(ptr)
     numFields := valueInfo.Elem().Type().NumField()
     if numFields > len(output) {
@@ -19,42 +19,42 @@ func copyFieldPointers(ptr interface{}, output []interface{}) []interface{} {
     return output[0 : numFields]
 }
 
-type InterfaceMemory struct {
+type interfaceMemory struct {
     mem [2]unsafe.Pointer
 }
 
-func Inspect(i interface{}) InterfaceMemory {
-    return *(*InterfaceMemory)(unsafe.Pointer(&i))
+func inspect(i interface{}) interfaceMemory {
+    return *(*interfaceMemory)(unsafe.Pointer(&i))
 }
 
-func (i InterfaceMemory) ToInterface() interface{} {
+func (i interfaceMemory) toInterface() interface{} {
     return *(*interface{})(unsafe.Pointer(&i.mem))
 }
 
-func (i *InterfaceMemory) Value() *unsafe.Pointer {
+func (i *interfaceMemory) value() *unsafe.Pointer {
     return &i.mem[1]
 }
 
-func (i *InterfaceMemory) TypeInfo() *unsafe.Pointer {
+func (i *interfaceMemory) typeInfo() *unsafe.Pointer {
     return (*unsafe.Pointer)(&i.mem[0])
 }
 
 // This one might break in the future and involves some gross hacks.
-func valuesFromPointers(pointers []interface{}, output []interface{}) {
+func ValuesFromPointers(pointers []interface{}, output []interface{}) {
     if len(pointers) != len(output) {
         panic("Lengths of input and output must be equal")
     }
 
     for i, p := range pointers {
         elemType := reflect.TypeOf(p).Elem()
-        elem := Inspect(elemType)
-        pointer := Inspect(p)
+        elem := inspect(elemType)
+        pointer := inspect(p)
 
-        var v InterfaceMemory
-        *v.Value() = *pointer.Value()
-        *v.TypeInfo() = *elem.Value()
+        var v interfaceMemory
+        *v.value() = *pointer.value()
+        *v.typeInfo() = *elem.value()
 
-        output[i] = v.ToInterface();
+        output[i] = v.toInterface();
 
         // output[i] = reflect.ValueOf(p).Elem().Interface()
     }
