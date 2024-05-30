@@ -124,7 +124,7 @@ func (c *AllTablesToCopyIteratorContext) Iter() Seq2[int, TableToCopyIterator] {
             if len(modelName) == 0 {
                 panic("Model name can't be empty")
             }
-            scanParameters := copyFieldPointers(model, c.fieldPointers[:])
+            scanParameters := CopyFieldPointers(model, c.fieldPointers[:])
             valueScanParameters := c.fieldValuePointers[0 : len(scanParameters)]
             ValuesFromPointers(scanParameters, valueScanParameters)
 
