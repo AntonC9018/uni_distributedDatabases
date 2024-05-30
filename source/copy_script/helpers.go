@@ -46,13 +46,13 @@ func ValuesFromPointers(pointers []interface{}, output []interface{}) {
     }
 
     for i, p := range pointers {
-        elemType := reflect.TypeOf(p).Elem()
-        elem := inspect(elemType)
+        elem := reflect.TypeOf(p).Elem()
+        elemType := inspect(elem)
         pointer := inspect(p)
 
         var v interfaceMemory
         *v.value() = *pointer.value()
-        *v.typeInfo() = *elem.value()
+        *v.typeInfo() = *elemType.value()
 
         output[i] = v.toInterface();
 
