@@ -52,11 +52,10 @@ func ValuesFromPointers(pointers []interface{}, output []interface{}) {
 
         var v interfaceMemory
         *v.value() = *pointer.value()
+        // The address stored here seems to be the exact same it stores for the type info.
         *v.typeInfo() = *elemType.value()
 
         output[i] = v.toInterface();
-
-        // output[i] = reflect.ValueOf(p).Elem().Interface()
     }
 }
 
