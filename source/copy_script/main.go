@@ -100,33 +100,15 @@ type TableToCopyIterator struct {
     Context *AllTablesToCopyIteratorContext
     ModelTypeName string
     ScanParameters []interface{}
-    Partition Partition
     Templates *QueryTemplates
 }
 
-type Partition struct {
-    Column string
-    Values []string
-}
-
-func getPartitionInfo(index ModelIndex) Partition {
-    switch (index) {
-    case ClientIndex:
-        return Partition{}
-    case ListIndex:
-        return Partition{
-            Column: "tip",
-            Values: []string{ "Munte", "Mare", "Excursie" },
-        }
-    default:
-        panic("unreachable")
-    }
-}
-
-func getTemplate(index ModelIndex) *QueryTemplates {
+func getTemplates(index ModelIndex) *QueryTemplates {
     switch (index) {
     case ClientIndex:
         return &ClientTemplates
+    case ListIndex:
+        return &ListTemplates
     default:
         panic("unreachable")
     }
@@ -145,8 +127,7 @@ func (c *AllTablesToCopyIteratorContext) Iter() Seq2[int, TableToCopyIterator] {
                 Context: c,
                 ModelTypeName: modelName,
                 ScanParameters: scanParameters,
-                Partition: getPartitionInfo(modelIndex),
-                Templates: getTemplate(modelIndex),
+                Templates: getTemplates(modelIndex),
             }
             shouldKeepGoing := body(i, iterator)
             if !shouldKeepGoing {

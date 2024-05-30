@@ -1,28 +1,28 @@
 CREATE TABLE Client (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
-    nume VARCHAR(255),
-    prenume VARCHAR(255));
+    id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    nume VARCHAR(255) NOT NULL,
+    prenume VARCHAR(255) NOT NULL);
 
 CREATE TABLE Foaie (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    tip VARCHAR(10),
-    pret MONEY,
-    providedTransport BIT,
-    hotel VARCHAR(255));
+    id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    tip VARCHAR(10) NOT NULL,
+    pret MONEY NOT NULL,
+    providedTransport BIT NOT NULL,
+    hotel VARCHAR(255)) NOT NULL;
 
 CREATE TABLE Rezervare (
-    ordNum INT IDENTITY(1,1) PRIMARY KEY,
-    clientId INT,
-    foaieId INT,
-    dataRezervarii DATE,
-    gaj MONEY);
+    ordNum INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    clientId INT NOT NULL,
+    foaieId INT NOT NULL,
+    dataRezervarii DATE NOT NULL,
+    gaj MONEY NOT NULL);
 
 CREATE TABLE Cumparatura (
-    ordNum INT IDENTITY(1,1) PRIMARY KEY,
-    clientId INT,
-    foaieId INT,
-    dataCumpararii DATE);   
+    ordNum INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    clientId INT NOT NULL,
+    foaieId INT NOT NULL,
+    dataCumpararii DATE NOT NULL);   
 
 ALTER TABLE Rezervare
     ADD CONSTRAINT fk_Rezervare_clientId
@@ -76,11 +76,11 @@ exec sp_rename 'Foaie', 'Foaie_old';
 
 -- 3. Creăm Foaie partiționat
 CREATE TABLE Foaie (
-    id INT IDENTITY(1, 1),
-    pret MONEY,
-    providedTransport BIT,
-    hotel VARCHAR(255),
-    tip VARCHAR(10),
+    id INT NOT NULL IDENTITY(1, 1),
+    pret MONEY NOT NULL,
+    providedTransport BIT NOT NULL,
+    hotel VARCHAR(255) NOT NULL,
+    tip VARCHAR(10) NOT NULL,
     PRIMARY KEY (id, tip)
 ) ON tipPartitionScheme(tip);
 

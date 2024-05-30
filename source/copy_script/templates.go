@@ -89,12 +89,83 @@ type QueryTemplates struct {
     ColumnNames []string
 }
 
-func createQueryTemplates(t reflect.Type, fieldTypesStrings StringsByDatabase) QueryTemplates {
+type Partition struct {
+    Values []string
+    SchemeName string
+    FuncName string
+}
+
+type TypedColumn struct {
+    Name string
+    Type StringsByDatabase
+}
+
+type PartitionedColumn struct {
+    Name string
+    Partition Partition
+}
+
+type templateConfig struct {
+    Columns []TypedColumn
+    PartitionedColumns []PartitionedColumn
+}
+
+type ConcatForDatabaseParams struct {
+    Template templateConfig
+    DatabaseType DatabaseType
+    MakePrimaryKey bool
+    Builder *strings.Builder
+}
+
+func concatForDatabase(p *ConcatForDatabaseParams) {
+    var b = p.Builder
+    for i, field := range p.Template.Columns {
+        if i != 0 {
+            b.WriteString(", ")
+        }
+        b.WriteString(field.Name)
+        b.WriteString(" ")
+        b.WriteString(field.Type.Get(p.DatabaseType))
+        if i == 0 && p.MakePrimaryKey {
+            b.WriteString(" PRIMARY KEY")
+        }
+    }
+}
+
+func concatPrimaryKeys(p *ConcatForDatabaseParams) {
+    var sb = p.Builder
+    sb.WriteString(", PRIMARY KEY (id")
+    for _, partitionedColumn := range p.Template.PartitionedColumns {
+        sb.WriteString(", ")
+        sb.WriteString(partitionedColumn.Name)
+    }
+    sb.WriteString(")")
+}
+
+func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates {
     helperStrings := createHelperForType(t)
 
-    createTempTable := StringsByDatabase{
-        Postgres: "CREATE TEMP TABLE %s(" + fieldTypesStrings.Postgres + ")",
-        SqlServer: "CREATE TABLE #%s(" + fieldTypesStrings.SqlServer + ")",
+    var sb strings.Builder
+
+    var createTempTable StringsByDatabase
+    {
+        context := ConcatForDatabaseParams{
+            Template: config,
+            MakePrimaryKey: false,
+            Builder: &sb,
+        }
+
+        context.DatabaseType = Postgres
+        concatForDatabase(&context)
+        createTempTable.Postgres = "CREATE TEMP TABLE %s(" + sb.String() + ")"
+
+        sb.Reset()
+
+        context.DatabaseType = SqlServer
+        concatForDatabase(&context)
+        createTempTable.SqlServer = "CREATE TABLE #%s(" + sb.String() + ")"
+
+        sb.Reset()
     }
 
     mergeTables := StringsByDatabase{
@@ -124,36 +195,109 @@ func createQueryTemplates(t reflect.Type, fieldTypesStrings StringsByDatabase) Q
         UPDATE SET ` + helperStrings.allFieldsButIdSetToSourceField + `;`,
     }
 
-    createTables := StringsByDatabase{
-        Postgres: `
-        DO
-        $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT * FROM pg_catalog.pg_class c
-                JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-                WHERE 
-                    -- n.nspname = 'schema_name'
-                    -- AND
-                    c.relname = '%[1]s'
-            )
-            THEN CREATE TABLE %[1]s (
-            ` + fieldTypesStrings.Postgres + `
-            );
-            END IF;
-        END
-        $$;
-        `,
-        SqlServer: `
-        if not exists (
-            select 1
-            from information_schema.tables
-            where table_name = '%[1]s'
-        ) begin create table %[1]s (
-        ` + fieldTypesStrings.SqlServer +
-        `);
-        end
-        `,
+    var createTables StringsByDatabase
+    {
+        concatContext := ConcatForDatabaseParams{
+            Template: config,
+            MakePrimaryKey: false,
+            DatabaseType: Postgres,
+            Builder: &sb,
+        }
+        {
+            concatContext.DatabaseType = Postgres
+            defer sb.Reset()
+
+            sb.WriteString(`
+            DO
+            $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT * FROM pg_catalog.pg_class c
+                    JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                    WHERE 
+                        -- n.nspname = 'schema_name'
+                        -- AND
+                        c.relname = '%[1]s'
+                )
+                THEN
+                CREATE TABLE %[1]s (`)
+
+            concatForDatabase(&concatContext)
+            concatPrimaryKeys(&concatContext)
+
+            sb.WriteString(") ")
+
+            if len(config.PartitionedColumns) > 0 {
+                sb.WriteString("PARTITION BY LIST (")
+                for i, partitionedColumn := range config.PartitionedColumns {
+                    if i != 0 {
+                        sb.WriteString(", ")
+                    }
+                    sb.WriteString(partitionedColumn.Name)
+                }
+            }
+
+            sb.WriteString(";")
+
+            if len(config.PartitionedColumns) > 1 {
+                panic("Unimplemented")
+            }
+            for _, partitionedColumn := range config.PartitionedColumns {
+                for _, val := range partitionedColumn.Partition.Values {
+                    sb.WriteString("CREATE TABLE ")
+                    sb.WriteString("%[1]s_")
+                    sb.WriteString(strings.ToLower(val))
+                    sb.WriteString(" PARTITION OF %[1]s FOR VALUES IN ('")
+                    sb.WriteString(val)
+                    sb.WriteString("');")
+                }
+            }
+
+            sb.WriteString(`
+                END IF;
+            END
+            $$;
+            `)
+
+            createTables.Postgres = sb.String()
+        }
+        {
+            concatContext.DatabaseType = SqlServer
+            defer sb.Reset()
+
+            sb.WriteString(`
+            if not exists (
+                select 1
+                from information_schema.tables
+                where table_name = '%[1]s'
+            ) begin
+            create table %[1]s (
+            `)
+
+            concatForDatabase(&concatContext)
+            concatPrimaryKeys(&concatContext)
+
+            sb.WriteString(`)`)
+
+            sb.WriteString("ON ")
+
+            // IDK if this is right, or if the parition scheme is on all the columns
+            for i, partitionedColumn := range config.PartitionedColumns {
+                if i != 0 {
+                    sb.WriteString(", ")
+                }
+                sb.WriteString(partitionedColumn.Partition.SchemeName)
+                sb.WriteString("(")
+                sb.WriteString(partitionedColumn.Name)
+                sb.WriteString(")")
+            }
+
+            sb.WriteString(`
+            end
+            `)
+
+            createTables.SqlServer = sb.String()
+        }
     }
 
     selectQuery := "SELECT " + helperStrings.allFields + " FROM %s ORDER BY id"
@@ -214,17 +358,81 @@ func makeDatabaseTableName(databaseType DatabaseType, suggestedName string) stri
     return tableName
 }
 
-var ClientTemplates = createQueryTemplates(reflect.TypeOf(Client{}), StringsByDatabase{
-    Postgres: `
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
-    nume VARCHAR(255),
-    prenume VARCHAR(255)
-    `,
-    SqlServer: `
-    id INT PRIMARY KEY,
-    email NVARCHAR(255) UNIQUE,
-    nume NVARCHAR(255),
-    prenume NVARCHAR(255)
-    `,
+var idType = StringsByDatabase{
+    Postgres: "INT NOT NULL",
+    SqlServer: "INT NOT NULL",
+}
+var stringType = StringsByDatabase{
+    Postgres: "VARCHAR(255) NOT NULL",
+    SqlServer: "NVARCHAR(255) NOT NULL",
+}
+var uniqueStringType = StringsByDatabase{
+    Postgres: "VARCHAR(255) NOT NULL UNIQUE",
+    SqlServer: "NVARCHAR(255) NOT NULL UNIQUE",
+}
+var ClientTemplates = createQueryTemplates(reflect.TypeOf(Client{}), templateConfig{
+    Columns: []TypedColumn{
+        {
+            Name: "id",
+            Type: idType,
+        },
+        {
+            Name: "email",
+            Type: uniqueStringType,
+        },
+        {
+            Name: "nume",
+            Type: stringType,
+        },
+        {
+            Name: "prenume",
+            Type: stringType,
+        },
+    },
+})
+
+var moneyType = StringsByDatabase{
+    SqlServer: "MONEY NOT NULL",
+    Postgres: "MONEY NOT NULL",
+}
+var boolType = StringsByDatabase{
+    SqlServer: "BIT NOT NULL",
+    Postgres: "BOOLEAN NOT NULL",
+}
+var ListTemplates = createQueryTemplates(reflect.TypeOf(Foaie{}), templateConfig{
+    Columns: []TypedColumn{
+        {
+            Name: "id",
+            Type: idType,
+        },
+        {
+            Name: "pret",
+            Type: moneyType,
+        },
+        {
+            Name: "providedTransport",
+            Type: boolType,
+        },
+        {
+            Name: "hotel",
+            Type: stringType,
+        },
+        {
+            Name: "tip",
+            Type: StringsByDatabase{
+                Postgres: "foaietip NOT NULL",
+                SqlServer: "VARCHAR(10) NOT NULL",
+            },
+        },
+    },
+    PartitionedColumns: []PartitionedColumn{
+        {
+            Name: "tip",
+            Partition: Partition{
+                Values: []string{ "Munte", "Mare", "Excursie" },
+                SchemeName: "tipPartitionScheme",
+                FuncName: "tipPartitionFunc",
+            },
+        },
+    },
 })

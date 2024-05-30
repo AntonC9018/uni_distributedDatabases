@@ -174,7 +174,7 @@ Adică vom avea câte o tabelă pentru fiecare tip de foaie:
 ### Selectarea host-ului de o bază de date
 
 GitHub oferă un pachet pentru dezvoltatori care include credite pentru o mulțime de servicii.
-Între ele sunt doar unele permit hosting-ul unei baze de date relaționale: Azure și Heroku.
+Între ele sunt doar două permit hosting-ul unei baze de date relaționale: Azure și Heroku.
 
 Azure permite crearea unei baze de date PostgreSQL, însă PostreSQL-ul acolo este prea scump
 (150+ de dolari per lună, pe când pachetul conține doar 100 de dolari).
@@ -186,7 +186,7 @@ Heroku dă un credit de 13 de dolari per lună, însă cere să conectez un card
 ceea ce eu nu vreau să fac, ca să nu fiu taxat după ce se termină creditul după ce uit
 de proiect.
 
-Am mai căutat niște servicii gratuite care permite a folosi o bază de date PostreSQL slabă
+Am mai căutat niște servicii gratuite care permit a folosi o bază de date PostreSQL slabă
 pentru teste, și am găsit Neon. 
 Oferă un tier gratuit destul de generos care permite să setez o bază de date PostreSQL.
 Este important ca mașina să fie vizibilă pe internet în mod normal,
