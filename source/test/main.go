@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 )
 
@@ -14,7 +15,9 @@ func main() {
     fmt.Printf("Address of x: %x\n", &x)
     fmt.Printf("Address of px: %x\n", &px)
     fmt.Printf("Value of x: %x\n", x)
+    printInterfaceValueAsBytes(reflect.TypeOf(iValue), "TypeOf(iValue)")
     printInterfaceValueAsBytes(iValue, "iValue")
+    printInterfaceValueAsBytes(reflect.TypeOf(iPointer), "TypeOf(iPointer)")
     printInterfaceValueAsBytes(iPointer, "iPointer")
     printInterfaceValueAsBytes(iValueFromPointer, "iValueFromPointer")
 }

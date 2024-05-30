@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"time"
+	"unsafe"
 
 	"github.com/spf13/viper"
 
@@ -86,6 +87,7 @@ type AllTablesToCopyIteratorContext struct {
     CopyingContexts []InitiatedCopyingContext
     allModels AllTableModels
     fieldPointers [5]interface{}
+    fieldValuePointers [5]interface{}
 }
 
 func createAllTablesToCopyIteratorContext(databaseCount int) AllTablesToCopyIteratorContext {
@@ -100,6 +102,7 @@ type TableToCopyIterator struct {
     Context *AllTablesToCopyIteratorContext
     ModelTypeName string
     ScanParameters []interface{}
+    ValueScanParameters []interface{}
     Templates *QueryTemplates
 }
 
@@ -123,10 +126,14 @@ func (c *AllTablesToCopyIteratorContext) Iter() Seq2[int, TableToCopyIterator] {
                 panic("Model name can't be empty")
             }
             scanParameters := copyFieldPointers(model, c.fieldPointers[:])
+            valueScanParameters := c.fieldValuePointers[0 : len(scanParameters)]
+            valuesFromPointers(scanParameters, valueScanParameters)
+
             iterator := TableToCopyIterator{
                 Context: c,
                 ModelTypeName: modelName,
                 ScanParameters: scanParameters,
+                ValueScanParameters: valueScanParameters,
                 Templates: getTemplates(modelIndex),
             }
             shouldKeepGoing := body(i, iterator)
@@ -236,9 +243,9 @@ func doTheCopying(dbContext *DatabasesContext, backgroundContext context.Context
 
             // As much as it pains me, this stupid way seems to be the only way
             // to do this without reimplementing everything.
-            scanParams := modelIter.ScanParameters
 
             for readCursor.Next() {
+                scanParams := modelIter.ScanParameters
                 err = readCursor.Scan(scanParams[:]...)
                 if err != nil {
                     return
@@ -246,15 +253,16 @@ func doTheCopying(dbContext *DatabasesContext, backgroundContext context.Context
 
                 for otherIndex, to := range otherDbIterationHelper.Iter() {
                     copyingContext := &modelIter.Context.CopyingContexts[otherIndex]
+                    fieldValues := modelIter.ValueScanParameters
 
                     switch (to.Database.Type) {
                     case Postgres:
-                        _, err = copyingContext.preparedBulk.PostgresStatement.Exec(scanParams[:]...)
+                        _, err = copyingContext.preparedBulk.PostgresStatement.Exec(fieldValues[:]...)
                         if err != nil {
                             return
                         }
                     case SqlServer:
-                        err = copyingContext.preparedBulk.SqlServerBulk.AddRow(scanParams[:])
+                        err = copyingContext.preparedBulk.SqlServerBulk.AddRow(fieldValues[:])
                         if err != nil {
                             return
                         }
@@ -379,6 +387,47 @@ func copyFieldPointers(ptr interface{}, output []interface{}) []interface{} {
         output[i] = ptr1
     }
     return output[0 : numFields]
+}
+
+type InterfaceMemory struct {
+    mem [2]unsafe.Pointer
+}
+
+func Inspect(i interface{}) InterfaceMemory {
+    return *(*InterfaceMemory)(unsafe.Pointer(&i))
+}
+
+func (i InterfaceMemory) ToInterface() interface{} {
+    return *(*interface{})(unsafe.Pointer(&i.mem))
+}
+
+func (i *InterfaceMemory) Value() *unsafe.Pointer {
+    return &i.mem[1]
+}
+
+func (i *InterfaceMemory) TypeInfo() *unsafe.Pointer {
+    return (*unsafe.Pointer)(&i.mem[0])
+}
+
+// This one might break in the future and involves some gross hacks.
+func valuesFromPointers(pointers []interface{}, output []interface{}) {
+    if len(pointers) != len(output) {
+        panic("Lengths of input and output must be equal")
+    }
+
+    for i, p := range pointers {
+        elemType := reflect.TypeOf(p).Elem()
+        elem := Inspect(elemType)
+        pointer := Inspect(p)
+
+        var v InterfaceMemory
+        *v.Value() = *pointer.Value()
+        *v.TypeInfo() = *elem.Value()
+
+        output[i] = v.ToInterface();
+
+        // output[i] = reflect.ValueOf(p).Elem().Interface()
+    }
 }
 
 type PreparedBulkContext struct {

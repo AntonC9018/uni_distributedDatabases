@@ -7,16 +7,16 @@ CREATE TABLE Client (
 CREATE TABLE Foaie (
     id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
     tip VARCHAR(10) NOT NULL,
-    pret MONEY NOT NULL,
+    pret FLOAT NOT NULL,
     providedTransport BIT NOT NULL,
-    hotel VARCHAR(255)) NOT NULL;
+    hotel VARCHAR(255) NOT NULL);
 
 CREATE TABLE Rezervare (
     ordNum INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
     clientId INT NOT NULL,
     foaieId INT NOT NULL,
     dataRezervarii DATE NOT NULL,
-    gaj MONEY NOT NULL);
+    gaj FLOAT NOT NULL);
 
 CREATE TABLE Cumparatura (
     ordNum INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
@@ -77,7 +77,7 @@ exec sp_rename 'Foaie', 'Foaie_old';
 -- 3. Creăm Foaie partiționat
 CREATE TABLE Foaie (
     id INT NOT NULL IDENTITY(1, 1),
-    pret MONEY NOT NULL,
+    pret FLOAT NOT NULL,
     providedTransport BIT NOT NULL,
     hotel VARCHAR(255) NOT NULL,
     tip VARCHAR(10) NOT NULL,

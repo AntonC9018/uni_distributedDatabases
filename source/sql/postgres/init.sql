@@ -10,7 +10,7 @@ CREATE TYPE FoaieTip AS ENUM ('Munte', 'Mare', 'Excursie');
 CREATE TABLE Foaie (
     id SERIAL PRIMARY KEY NOT NULL,
     tip FoaieTip NOT NULL,
-    pret MONEY NOT NULL,
+    pret FLOAT NOT NULL,
     providedTransport BOOLEAN NOT NULL,
     hotel VARCHAR(255) NOT NULL
 );
@@ -20,7 +20,7 @@ CREATE TABLE Rezervare (
     clientId INT REFERENCES Client(id) NOT NULL,
     foaieId INT REFERENCES Foaie(id) NOT NULL,
     dataRezervarii DATE NOT NULL,
-    gaj MONEY NOT NULL
+    gaj FLOAT NOT NULL
 );
 
 CREATE TABLE Cumparatura (
@@ -73,11 +73,12 @@ INSERT INTO Cumparatura (clientId, foaieId, dataCumpararii) VALUES
 ALTER TABLE Foaie RENAME TO Foaie_old;
 
 CREATE TABLE Foaie (
-    id SERIAL PRIMARY KEY NOT NULL,
-    pret MONEY NOT NULL,
+    id SERIAL NOT NULL,
+    pret FLOAT NOT NULL,
     providedTransport BOOLEAN NOT NULL,
     hotel VARCHAR(255) NOT NULL,
-    tip FoaieTip NOT NULL
+    tip FoaieTip NOT NULL,
+    PRIMARY KEY (id, tip)
 ) PARTITION BY LIST (tip);
 
 ALTER TABLE Rezervare
@@ -101,22 +102,3 @@ INSERT INTO Foaie_Excursie (id, pret, providedTransport, hotel, tip)
     SELECT id, pret, providedTransport, hotel, tip FROM Foaie_old WHERE tip = 'Excursie';
   
 DROP TABLE Foaie_old;
-
-ALTER TABLE Rezervare
-    ADD CONSTRAINT fk_Rezervare_foaieId
-    FOREIGN KEY (foaieId)
-    REFERENCES Foaie(id);
-
-ALTER TABLE Cumparatura
-    ADD CONSTRAINT fk_Cumparatura_foaieId
-    FOREIGN KEY (foaieId)
-    REFERENCES Foaie(id);
-
-CREATE TABLE Foaie (
-    id SERIAL NOT NULL,
-    pret MONEY NOT NULL,
-    providedTransport BOOLEAN NOT NULL,
-    hotel VARCHAR(255) NOT NULL,
-    tip FoaieTip NOT NULL,
-    PRIMARY KEY (id, tip)
-) PARTITION BY LIST (tip);

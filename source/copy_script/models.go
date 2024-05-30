@@ -9,9 +9,9 @@ type Client struct {
 
 type ListType string
 
-type List struct {
+type Foaie struct {
     Id int32
-    Tip ListType
+    Tip string
     Pret float64
     ProvidedTransport bool
     Hotel string
@@ -19,7 +19,7 @@ type List struct {
 
 type AllTableModels struct {
     Client Client
-    List List
+    List Foaie
 }
 
 type ModelIndex int

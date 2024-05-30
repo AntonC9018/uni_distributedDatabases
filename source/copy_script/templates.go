@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"unicode"
@@ -55,13 +56,22 @@ func makeAssignList(names []string, prefix string) string {
     return r.String()
 }
 
-func createHelperForType(t reflect.Type) helperStringsForType {
+func createHelperForType(config templateConfig) helperStringsForType {
     // Get all fields, make first letter lowercase
     var columnNames []string
-    for i := 0; i < t.NumField(); i++ {
-        name := t.Field(i).Name
-        camelName := pascalToCamel(name)
-        columnNames = append(columnNames, camelName)
+    for i, col := range config.Columns {
+        // The fact that postgres can't handle them not being camel case is so annoying
+        lowerCase := strings.ToLower(col.Name)
+        columnNames = append(columnNames, lowerCase)
+
+        // Make sure it matches the provided name
+        {
+            expected := lowerCase
+            found := strings.ToLower(config.ModelType.Field(i).Name)
+            if (found != col.Name) {
+                log.Fatalf("Expected the %d-th field to be %s, found %s", i, expected, found)
+            }
+        }
     }
 
     if columnNames[0] != "id" {
@@ -106,6 +116,7 @@ type PartitionedColumn struct {
 }
 
 type templateConfig struct {
+    ModelType reflect.Type
     Columns []TypedColumn
     PartitionedColumns []PartitionedColumn
 }
@@ -142,8 +153,8 @@ func concatPrimaryKeys(p *ConcatForDatabaseParams) {
     sb.WriteString(")")
 }
 
-func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates {
-    helperStrings := createHelperForType(t)
+func createQueryTemplates(config templateConfig) QueryTemplates {
+    helperStrings := createHelperForType(config)
 
     var sb strings.Builder
 
@@ -168,31 +179,72 @@ func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates 
         sb.Reset()
     }
 
-    mergeTables := StringsByDatabase{
-        // NOTE: 
-        // No manual locking is necessary, because this script
-        // is the only one touching these two tables, ever.
-        Postgres: `
-        WITH cte AS (
-            DELETE FROM %[1]s
-            WHERE id NOT IN (SELECT id FROM %[2]s))
-        INSERT INTO %[1]s
-        TABLE %[2]s
-        ON CONFLICT (id) DO UPDATE SET ` + helperStrings.allFieldsButIdSetToExcludedField + `;
-        `,
-        SqlServer: `
-        MERGE %[1]s AS target
-        USING (SELECT * FROM #%[2]s) AS source
-        ON source.id = target.id
+    var mergeTable StringsByDatabase
+    {
+        func(){
+            defer sb.Reset()
+            // NOTE: 
+            // No manual locking is necessary, because this script
+            // is the only one touching these two tables, ever.
+            sb.WriteString(`
+            WITH cte AS (
+                DELETE FROM %[1]s
+                WHERE id NOT IN (SELECT id FROM %[2]s))
+            INSERT INTO %[1]s
+            TABLE %[2]s
+            ON CONFLICT (id`)
 
-        WHEN NOT MATCHED BY source THEN DELETE
+            for _, partitionedColumn := range config.PartitionedColumns {
+                sb.WriteString(", ")
+                sb.WriteString(partitionedColumn.Name)
+            }
 
-        WHEN NOT MATCHED BY target THEN
-        INSERT (` + helperStrings.allFields + `)
-        VALUES (` + helperStrings.allFieldsPrefixedBySource + `)
+            sb.WriteString(") DO UPDATE SET ")
 
-        WHEN MATCHED THEN
-        UPDATE SET ` + helperStrings.allFieldsButIdSetToSourceField + `;`,
+            // Add all fields, except the first one (id), and the ones in PartitionedColumns
+            var wroteCounter = 0
+            for i, col := range helperStrings.columnNames {
+                if i == 0 {
+                    continue
+                }
+                shouldWrite := func() bool{
+                    for _, partition := range config.PartitionedColumns {
+                        if partition.Name == col {
+                            return false
+                        }
+                    }
+                    return true
+                }()
+                if !shouldWrite {
+                    continue
+                }
+                if wroteCounter != 0 {
+                    sb.WriteString(", ")
+                }
+                wroteCounter += 1
+                sb.WriteString(col)
+                sb.WriteString(" = excluded.")
+                sb.WriteString(col)
+            }
+            mergeTable.Postgres = sb.String()
+        }()
+        func(){
+            defer sb.Reset()
+
+            mergeTable.SqlServer = `
+            MERGE %[1]s AS target
+            USING (SELECT * FROM #%[2]s) AS source
+            ON source.id = target.id
+
+            WHEN NOT MATCHED BY source THEN DELETE
+
+            WHEN NOT MATCHED BY target THEN
+            INSERT (` + helperStrings.allFields + `)
+            VALUES (` + helperStrings.allFieldsPrefixedBySource + `)
+
+            WHEN MATCHED THEN
+            UPDATE SET ` + helperStrings.allFieldsButIdSetToSourceField + `;`
+        }()
     }
 
     var createTables StringsByDatabase
@@ -203,7 +255,7 @@ func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates 
             DatabaseType: Postgres,
             Builder: &sb,
         }
-        {
+        func(){
             concatContext.DatabaseType = Postgres
             defer sb.Reset()
 
@@ -235,6 +287,7 @@ func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates 
                     }
                     sb.WriteString(partitionedColumn.Name)
                 }
+                sb.WriteString(")")
             }
 
             sb.WriteString(";")
@@ -260,8 +313,8 @@ func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates 
             `)
 
             createTables.Postgres = sb.String()
-        }
-        {
+        }()
+        func(){
             concatContext.DatabaseType = SqlServer
             defer sb.Reset()
 
@@ -274,36 +327,44 @@ func createQueryTemplates(t reflect.Type, config templateConfig) QueryTemplates 
             create table %[1]s (
             `)
 
+            isPartitioned := len(config.PartitionedColumns) > 0
+            concatContext.MakePrimaryKey = !isPartitioned
+
             concatForDatabase(&concatContext)
-            concatPrimaryKeys(&concatContext)
+
+            if isPartitioned {
+                concatPrimaryKeys(&concatContext)
+            }
 
             sb.WriteString(`)`)
 
-            sb.WriteString("ON ")
+            if isPartitioned {
+                sb.WriteString("ON ")
 
-            // IDK if this is right, or if the parition scheme is on all the columns
-            for i, partitionedColumn := range config.PartitionedColumns {
-                if i != 0 {
-                    sb.WriteString(", ")
+                // IDK if this is right, or if the parition scheme is on all the columns
+                for i, partitionedColumn := range config.PartitionedColumns {
+                    if i != 0 {
+                        sb.WriteString(", ")
+                    }
+                    sb.WriteString(partitionedColumn.Partition.SchemeName)
+                    sb.WriteString("(")
+                    sb.WriteString(partitionedColumn.Name)
+                    sb.WriteString(")")
                 }
-                sb.WriteString(partitionedColumn.Partition.SchemeName)
-                sb.WriteString("(")
-                sb.WriteString(partitionedColumn.Name)
-                sb.WriteString(")")
             }
 
-            sb.WriteString(`
+            sb.WriteString(`;
             end
             `)
 
             createTables.SqlServer = sb.String()
-        }
+        }()
     }
 
     selectQuery := "SELECT " + helperStrings.allFields + " FROM %s ORDER BY id"
 
     return QueryTemplates{
-        mergeTables: mergeTables,
+        mergeTables: mergeTable,
         createTempTable: createTempTable,
         createTable: createTables,
         selectQuery: selectQuery,
@@ -370,7 +431,8 @@ var uniqueStringType = StringsByDatabase{
     Postgres: "VARCHAR(255) NOT NULL UNIQUE",
     SqlServer: "NVARCHAR(255) NOT NULL UNIQUE",
 }
-var ClientTemplates = createQueryTemplates(reflect.TypeOf(Client{}), templateConfig{
+var ClientTemplates = createQueryTemplates(templateConfig{
+    ModelType: reflect.TypeOf(Client{}),
     Columns: []TypedColumn{
         {
             Name: "id",
@@ -391,31 +453,23 @@ var ClientTemplates = createQueryTemplates(reflect.TypeOf(Client{}), templateCon
     },
 })
 
+// NOTE:
+// MONEY is not supported by the sqlserver driver.
+// And it's treated differently by different drivers, so just using a float is good enough.
 var moneyType = StringsByDatabase{
-    SqlServer: "MONEY NOT NULL",
-    Postgres: "MONEY NOT NULL",
+    SqlServer: "FLOAT NOT NULL",
+    Postgres: "FLOAT NOT NULL",
 }
 var boolType = StringsByDatabase{
     SqlServer: "BIT NOT NULL",
     Postgres: "BOOLEAN NOT NULL",
 }
-var ListTemplates = createQueryTemplates(reflect.TypeOf(Foaie{}), templateConfig{
+var ListTemplates = createQueryTemplates(templateConfig{
+    ModelType: reflect.TypeOf(Foaie{}),
     Columns: []TypedColumn{
         {
             Name: "id",
             Type: idType,
-        },
-        {
-            Name: "pret",
-            Type: moneyType,
-        },
-        {
-            Name: "providedTransport",
-            Type: boolType,
-        },
-        {
-            Name: "hotel",
-            Type: stringType,
         },
         {
             Name: "tip",
@@ -423,6 +477,18 @@ var ListTemplates = createQueryTemplates(reflect.TypeOf(Foaie{}), templateConfig
                 Postgres: "foaietip NOT NULL",
                 SqlServer: "VARCHAR(10) NOT NULL",
             },
+        },
+        {
+            Name: "pret",
+            Type: moneyType,
+        },
+        {
+            Name: "providedtransport",
+            Type: boolType,
+        },
+        {
+            Name: "hotel",
+            Type: stringType,
         },
     },
     PartitionedColumns: []PartitionedColumn{
