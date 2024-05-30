@@ -8,6 +8,8 @@ import (
 	"os"
 	"reflect"
 	"time"
+    db "database_config"
+    conf "config"
 
 	"github.com/spf13/viper"
 
@@ -15,29 +17,15 @@ import (
 	"github.com/lib/pq"
 )
 
-func readConfig() (*viper.Viper, error) {
-	config := viper.New()
-	config.SetConfigName("configuration")
-	config.SetConfigType("json")
-	config.AddConfigPath(".")
-	{
-		err := config.ReadInConfig()
-		if err != nil {
-            return config, err
-		}
-	}
-    return config, nil
-}
-
 type ConnectionHelper struct {
     Transaction *sql.Tx;
     Connection *sql.Conn;
-    Database *NamedDatabase;
+    Database *db.NamedDatabase;
 }
 
 func createConnectionHelper(
-    dbContext *DatabasesContext,
-    transactionContext *DatabaseTransactionsContext,
+    dbContext *db.DatabasesContext,
+    transactionContext *db.DatabaseTransactionsContext,
     index int) ConnectionHelper {
 
     return ConnectionHelper{
@@ -58,8 +46,8 @@ func (c *InitiatedCopyingContext) IsEmpty() bool {
 }
 
 type OtherDbIterationHelper struct {
-    dbContext *DatabasesContext
-    transactionContext *DatabaseTransactionsContext
+    dbContext *db.DatabasesContext
+    transactionContext *db.DatabaseTransactionsContext
     fromIndex int
 }
 
@@ -143,13 +131,13 @@ func (c *AllTablesToCopyIteratorContext) Iter() Seq2[int, TableToCopyIterator] {
     }
 }
 
-func doTheCopying(dbContext *DatabasesContext, backgroundContext context.Context) (err error) {
+func doTheCopying(dbContext *db.DatabasesContext, backgroundContext context.Context) (err error) {
     var transactionOptions = sql.TxOptions{
         // Isolation: sql.LevelSerializable,
         ReadOnly: false,
     }
 
-    var transactionContext DatabaseTransactionsContext
+    var transactionContext db.DatabaseTransactionsContext
     {
         contextWithTimeout, cancel := context.WithTimeout(backgroundContext, time.Second * 2)
         defer cancel()
@@ -255,12 +243,12 @@ func doTheCopying(dbContext *DatabasesContext, backgroundContext context.Context
                     fieldValues := modelIter.ValueScanParameters
 
                     switch (to.Database.Type) {
-                    case Postgres:
+                    case db.Postgres:
                         _, err = copyingContext.preparedBulk.PostgresStatement.Exec(fieldValues[:]...)
                         if err != nil {
                             return
                         }
-                    case SqlServer:
+                    case db.SqlServer:
                         err = copyingContext.preparedBulk.SqlServerBulk.AddRow(fieldValues[:])
                         if err != nil {
                             return
@@ -278,12 +266,12 @@ func doTheCopying(dbContext *DatabasesContext, backgroundContext context.Context
                 copyingContext := &modelIter.Context.CopyingContexts[otherIndex]
 
                 switch (to.Database.Type) {
-                case Postgres:
+                case db.Postgres:
                     _, err = copyingContext.preparedBulk.PostgresStatement.Exec()
                     if err != nil {
                         return
                     }
-                case SqlServer:
+                case db.SqlServer:
                     bulk := copyingContext.preparedBulk.SqlServerBulk
                     _, err = bulk.Done()
                     if err != nil {
@@ -337,7 +325,7 @@ func mainWithError(context context.Context) error {
     var config *viper.Viper
     {
         var err error
-        config, err = readConfig()
+        config, err = conf.ReadConfig()
         if err != nil {
             _, configFileNotFound := err.(viper.ConfigFileNotFoundError)
             if configFileNotFound {
@@ -350,10 +338,10 @@ func mainWithError(context context.Context) error {
         log.Printf("Config loaded")
     }
 
-    var dbContext DatabasesContext
+    var dbContext db.DatabasesContext
     {
         var err error
-        dbContext, err = establishConnectionsFromConfig(config)
+        dbContext, err = db.EstablishConnectionsFromConfig(config)
         if err != nil {
             log.Printf("Error while establishing connections: %v\n", err);
             return err
@@ -396,13 +384,13 @@ func prepareInsertIntoTempTableStatement(
     }
 
     switch (c.Database.Type) {
-    case Postgres:
+    case db.Postgres:
         copyInString := pq.CopyIn(tempTableName, templates.ColumnNames...)
         statement, err := c.Transaction.PrepareContext(context, copyInString)
         return PreparedBulkContext{
             PostgresStatement: statement,
         }, err
-    case SqlServer:
+    case db.SqlServer:
         var bulk *mssql.Bulk
         c.Connection.Raw(func(driverConn any) error {
             sqlServerConn := driverConn.(*mssql.Conn)

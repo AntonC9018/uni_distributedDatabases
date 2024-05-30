@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"unicode"
+    db "database_config"
 )
 
 type StringsByDatabase struct {
@@ -13,11 +14,11 @@ type StringsByDatabase struct {
     SqlServer string
 }
 
-func (strings *StringsByDatabase) Get(databaseType DatabaseType) string {
+func (strings *StringsByDatabase) Get(databaseType db.DatabaseType) string {
     switch (databaseType) {
-    case Postgres:
+    case db.Postgres:
         return strings.Postgres
-    case SqlServer:
+    case db.SqlServer:
         return strings.SqlServer
     default:
         panic("unreachable")
@@ -123,7 +124,7 @@ type templateConfig struct {
 
 type ConcatForDatabaseParams struct {
     Template templateConfig
-    DatabaseType DatabaseType
+    DatabaseType db.DatabaseType
     MakePrimaryKey bool
     Builder *strings.Builder
 }
@@ -166,13 +167,13 @@ func createQueryTemplates(config templateConfig) QueryTemplates {
             Builder: &sb,
         }
 
-        context.DatabaseType = Postgres
+        context.DatabaseType = db.Postgres
         concatForDatabase(&context)
         createTempTable.Postgres = "CREATE TEMP TABLE %s(" + sb.String() + ")"
 
         sb.Reset()
 
-        context.DatabaseType = SqlServer
+        context.DatabaseType = db.SqlServer
         concatForDatabase(&context)
         createTempTable.SqlServer = "CREATE TABLE #%s(" + sb.String() + ")"
 
@@ -252,11 +253,11 @@ func createQueryTemplates(config templateConfig) QueryTemplates {
         concatContext := ConcatForDatabaseParams{
             Template: config,
             MakePrimaryKey: false,
-            DatabaseType: Postgres,
+            DatabaseType: db.Postgres,
             Builder: &sb,
         }
         func(){
-            concatContext.DatabaseType = Postgres
+            concatContext.DatabaseType = db.Postgres
             defer sb.Reset()
 
             sb.WriteString(`
@@ -315,7 +316,7 @@ func createQueryTemplates(config templateConfig) QueryTemplates {
             createTables.Postgres = sb.String()
         }()
         func(){
-            concatContext.DatabaseType = SqlServer
+            concatContext.DatabaseType = db.SqlServer
             defer sb.Reset()
 
             sb.WriteString(`
@@ -372,7 +373,7 @@ func createQueryTemplates(config templateConfig) QueryTemplates {
     }
 }
 
-func (templates *QueryTemplates) TempTable(databaseType DatabaseType, tempTableName string) string {
+func (templates *QueryTemplates) TempTable(databaseType db.DatabaseType, tempTableName string) string {
     template := templates.createTempTable.Get(databaseType)
     r := fmt.Sprintf(template, tempTableName)
     return r
@@ -383,13 +384,13 @@ type SourceAndTarget struct {
     Target string;
 }
 
-func (templates *QueryTemplates) MergeTables(databaseType DatabaseType, p SourceAndTarget) string {
+func (templates *QueryTemplates) MergeTables(databaseType db.DatabaseType, p SourceAndTarget) string {
     template := templates.mergeTables.Get(databaseType)
     r := fmt.Sprintf(template, p.Target, p.Source)
     return r
 }
 
-func (templates *QueryTemplates) CreateTable(databaseType DatabaseType, tableName string) string {
+func (templates *QueryTemplates) CreateTable(databaseType db.DatabaseType, tableName string) string {
     template := templates.createTable.Get(databaseType)
     r := fmt.Sprintf(template, tableName)
     return r
@@ -408,11 +409,11 @@ func assertValidTableName(tableName string) {
 
 // The table names are lowercased automatically in postgres irrespective of what you pass in.
 // The issue is that the table existence check is done against the name and IS case sensitive.
-func makeDatabaseTableName(databaseType DatabaseType, suggestedName string) string {
+func makeDatabaseTableName(databaseType db.DatabaseType, suggestedName string) string {
     tableName := suggestedName
     assertValidTableName(tableName)
 
-    if databaseType == Postgres {
+    if databaseType == db.Postgres {
         tableName = strings.ToLower(tableName)
     }
 

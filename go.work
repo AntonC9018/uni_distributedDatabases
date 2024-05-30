@@ -1,7 +1,8 @@
 go 1.22.3
 
 use (
+	./source/config
 	./source/copy_script
-	./source/test
+	./source/database_config
 	./source/webapp
 )
