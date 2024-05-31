@@ -1,6 +1,8 @@
 package config
 
-func readConfig() (*viper.Viper, error) {
+import "github.com/spf13/viper"
+
+func ReadConfig() (*viper.Viper, error) {
 	config := viper.New()
 	config.SetConfigName("configuration")
 	config.SetConfigType("json")

@@ -1,0 +1,15 @@
+{
+    "MainDatabase": "chisinau",
+    "databases": [
+        {
+            "DatabaseName": "chisinau",
+            "Type": "postgresql",
+            "ConnectionString": "postgresql://LOGIN:PASSWORD@URL/chisinau?sslmode=require"
+        },
+        {
+            "DatabaseName": "balti",
+            "Type": "sqlserver",
+            "ConnectionString": "sqlserver://LOGIN:PASSWORD@windows:1433?user id=USER&database=balti"
+        }
+    ]
+}
