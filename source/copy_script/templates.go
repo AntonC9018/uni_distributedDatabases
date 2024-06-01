@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"unicode"
-    db "database_config"
+    db "common/database_config"
 )
 
 type StringsByDatabase struct {

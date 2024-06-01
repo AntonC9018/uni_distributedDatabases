@@ -8,8 +8,8 @@ import (
 	"os"
 	"reflect"
 	"time"
-    db "database_config"
-    conf "config"
+    db "common/database_config"
+    conf "common/config"
 
 	"github.com/spf13/viper"
 
