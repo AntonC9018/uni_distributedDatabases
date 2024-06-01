@@ -5,6 +5,11 @@ test.db
 source/webapp/webapp
 source/copy-script/copy-script
 /copy-script
+todo.txt
+node_modules
+build-errors.log
+*_templ.go
+tmp
 
 # The app reads the connection strings and stuff from this
 configuration.json
