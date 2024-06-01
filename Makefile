@@ -47,9 +47,6 @@ dist_css_dir := $(dist_dir)css/
 entry_css_file := $(css_dir)main.css
 min_css_file := $(dist_css_dir)main.min.css
 
-"build": "",
-"watch": "postcss static/css/tailwind.css ./static/css/tailwind.min.css --watch"
-
 .PHONY: tailwind-watch
 tailwind-watch:
 	npx postcss $(entry_css_file) -o $(min_css_file) --watch
