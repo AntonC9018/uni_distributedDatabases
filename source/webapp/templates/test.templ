@@ -1,5 +1,8 @@
 package templates
 
+import "webapp/source_map"
+
 templ Hello(name string) {
 	<div class="p-1">Hello, { name }</div>
+	<div class="p-1">The URL is: { source_map.RemapSource("src/main.ts") }</div>
 }

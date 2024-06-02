@@ -3,10 +3,20 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"webapp/templates"
+    "webapp/source_map"
 
 	"github.com/gin-gonic/gin"
 )
+
+
+func isDevelopment() bool {
+    env := os.Getenv("APP_ENV")
+    isProd := strings.EqualFold(env, "PRODUCTION")
+    return !isProd
+}
 
 func main() {
 	app := gin.New()
@@ -59,6 +69,8 @@ func main() {
             c.Error(err)
         }
     })
+
+    source_map.InitSourceMapping(app, isDevelopment())
 
     app.Run()
 }

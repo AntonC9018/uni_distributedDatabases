@@ -13,7 +13,8 @@ dev_webapp_output := ./tmp/$(webapp_exe)
 
 .PHONY: build
 build:
-	$(MAKE) tailwind-build
+	# $(MAKE) tailwind-build
+	$(MAKE) vite-build
 	$(MAKE) templ-generate
 	go build -o $(dev_webapp_output) $(webapp_path)
 
@@ -36,9 +37,12 @@ air:
 	
 .PHONY: build_prod
 build_prod:
-	$(MAKE) tailwind-build
+	# $(MAKE) tailwind-build
+	$(MAKE) vite-build
 	$(MAKE) templ-generate
 	export GIN_MODE=release; go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
+	rm -rf bin/dist
+	cp -r static/dist bin/dist
 
 
 css_dir := static/css/
@@ -54,6 +58,15 @@ tailwind-watch:
 .PHONY: tailwind-build
 tailwind-build:
 	npx postcss $(entry_css_file) -o $(min_css_file)
+
+.PHONY: vite-build
+vite-build:
+	npx tsc
+	npx vite build
+
+.PHONY: vite-watch
+vite-watch:
+	npx vite
 
 
 .PHONY: templ-generate

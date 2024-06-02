@@ -10,6 +10,8 @@ node_modules
 build-errors.log
 *_templ.go
 tmp
+*_templ.txt
+bin
 
 # The app reads the connection strings and stuff from this
 configuration.json
