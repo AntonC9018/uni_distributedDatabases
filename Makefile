@@ -38,7 +38,7 @@ air:
 build_prod:
 	$(MAKE) tailwind-build
 	$(MAKE) templ-generate
-	go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
+	export GIN_MODE=release; go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
 
 
 css_dir := static/css/
