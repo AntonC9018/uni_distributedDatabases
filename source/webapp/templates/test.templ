@@ -1,8 +1,36 @@
 package templates
 
 import "webapp/source_map"
+import "strconv"
 
-templ Hello(name string) {
-	<div class="p-1">Hello, { name }</div>
-	<div class="p-1">The URL is: { source_map.RemapSource("src/main.ts") }</div>
+type State struct {
+    Counter int
+    User int
 }
+
+templ counts(state *State) {
+	<div>Global: { strconv.Itoa(state.Counter) }</div>
+	<div>User: { strconv.Itoa(state.User) }</div>
+}
+
+templ form() {
+	<form action="/" method="POST">
+		<div><button type="submit" name="count" value="count">Count</button></div>
+		<div><button type="submit" name="user" value="user">User</button></div>
+	</form>
+}
+
+templ head() {
+    <head>
+        <script type="module" src={ source_map.Remap("src/main.ts") }></script>
+    </head>
+}
+
+templ Page(state *State) {
+    @head()
+    <body>
+        @counts(state)
+        @form()
+    </body>
+}
+

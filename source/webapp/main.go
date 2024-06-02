@@ -1,16 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
+	"webapp/source_map"
 	"webapp/templates"
-    "webapp/source_map"
 
 	"github.com/gin-gonic/gin"
 )
-
 
 func isDevelopment() bool {
     env := os.Getenv("APP_ENV")
@@ -42,35 +40,28 @@ func main() {
         c.JSON(400, gin.H{ "errors": errorStrings })
     })
 
-    {
-        group := app.Group("local")
-        group.Use(func(c *gin.Context) {
-            log.Printf("Local log")
-            if c.Keys == nil {
-                c.Keys = make(map[string]interface{})
-            }
-            c.Keys["test"] = "Name"
-            c.Next()
-        })
+    var counterState = templates.State{}
 
-        group.GET("test", func(c *gin.Context) {
-            component := templates.Hello(c.Keys["test"].(string))
-            c.Error(fmt.Errorf("test error"))
-
-            if err := component.Render(c.Request.Context(), c.Writer); err != nil {
-                c.Error(err)
-            }
-        })
-    }
-
-    app.GET("test", func(c *gin.Context) {
-        component := templates.Hello("John")
+    renderCounter := func(c *gin.Context) {
+        component := templates.Page(&counterState)
         if err := component.Render(c.Request.Context(), c.Writer); err != nil {
             c.Error(err)
         }
+    }
+
+    app.GET("/", func(c *gin.Context) {
+        renderCounter(c)
+    })
+    app.POST("/", func(c *gin.Context) {
+        c.Request.ParseForm()
+        valStr := c.Request.Form.Has("count")
+        if valStr {
+            counterState.Counter += 1
+        }
+        renderCounter(c)
     })
 
-    source_map.InitSourceMapping(app, isDevelopment())
+    source_map.Init(app, isDevelopment())
 
     app.Run()
 }

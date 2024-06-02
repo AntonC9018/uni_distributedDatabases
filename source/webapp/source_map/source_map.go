@@ -7,7 +7,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,11 +40,6 @@ func initManifest(path string) {
 			panic("unexpected manifest format")
 		}
 
-        if !strings.HasPrefix(key, "static/") {
-            panic("expected file to be in `static/`")
-        }
-        key = key[len("static/"):]
-
 		file, ok := entry["file"].(string)
 		if !ok {
 			panic("unexpected file format")
@@ -56,7 +50,7 @@ func initManifest(path string) {
     viteManifest = result
 }
 
-func InitSourceMapping(engine *gin.Engine, isDevelopment bool) {
+func Init(engine *gin.Engine, isDevelopment bool) {
 
     if !isDevelopment {
         initManifest("dist/manifest.json")
@@ -76,14 +70,15 @@ func InitSourceMapping(engine *gin.Engine, isDevelopment bool) {
         proxy.Director = func(req *http.Request) {
             req.Host = remote.Host
             req.Header = c.Request.Header
-            req.URL = remote
-            req.URL.Path = c.Param("catchall")
+            req.URL.Scheme = "http"
+            req.URL.Host = remote.Host
+            req.URL.Path = c.Request.URL.Path
         }
         proxy.ServeHTTP(c.Writer, c.Request)
     })
 }
 
-func RemapSource(path string) string {
+func Remap(path string) string {
     if viteManifest != nil {
         return viteManifest.NameMap[path]
     }
