@@ -37,13 +37,15 @@ air:
 	
 .PHONY: build_prod
 build_prod:
+	rm -rf bin/*
+	mkdir -p bin
+	mkdir bin/dist
 	# $(MAKE) tailwind-build
 	$(MAKE) vite-build
 	$(MAKE) templ-generate
-	export GIN_MODE=release; go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
-	rm -rf bin/dist
-	cp -r static/dist bin/dist
-	echo 'export APP_ENV=PRODUCTION; ./webapp'> bin/run.sh
+	go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
+	cp -r static/dist bin
+	echo 'export APP_ENV=PRODUCTION; export GIN_MODE=release;./webapp'> bin/run.sh
 	chmod +x bin/run.sh
 
 

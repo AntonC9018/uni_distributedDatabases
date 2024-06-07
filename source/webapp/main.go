@@ -18,10 +18,6 @@ func isDevelopment() bool {
 }
 
 func main() {
-    if (!isDevelopment()) {
-        gin.SetMode(gin.ReleaseMode)
-    }
-
 	app := gin.New()
 	app.Use(gin.Logger())
 

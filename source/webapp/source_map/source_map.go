@@ -22,12 +22,12 @@ func initManifest(path string) {
 
     manifestBytes, err := os.ReadFile(path)
     if err != nil {
-        panic(err)
+        log.Panic(err)
     }
 
 	var manifest map[string]interface{}
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		panic(err)
+        log.Panic(err)
 	}
 
 	result := &ViteManifest{

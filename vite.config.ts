@@ -43,7 +43,7 @@ export default (vite: any) => {
                 {
                     if (isProd)
                     {
-                        return "htmx.org/dist/htmx"
+                        return "htmx.org"
                     }
                     return "htmx.org/dist/htmx";
                 })(),
