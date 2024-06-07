@@ -18,7 +18,7 @@ func isDevelopment() bool {
 }
 
 func main() {
-    if (isDevelopment()) {
+    if (!isDevelopment()) {
         gin.SetMode(gin.ReleaseMode)
     }
 
