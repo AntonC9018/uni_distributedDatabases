@@ -16,7 +16,7 @@ templ Counts(state *State) {
 }
 
 templ form() {
-	<form hx-post="/counts" hx-target="find #counts">
+	<form hx-post="/" hx-target="#counts">
 		<div><button type="submit" name="count" value="count">Count</button></div>
 		<div><button type="submit" name="user" value="user">User</button></div>
 	</form>
