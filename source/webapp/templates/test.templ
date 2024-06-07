@@ -8,13 +8,15 @@ type State struct {
     User int
 }
 
-templ counts(state *State) {
-	<div>Global: { strconv.Itoa(state.Counter) }</div>
-	<div>User: { strconv.Itoa(state.User) }</div>
+templ Counts(state *State) {
+    <div id="counts">
+        <div>Global: { strconv.Itoa(state.Counter) }</div>
+        <div>User: { strconv.Itoa(state.User) }</div>
+    </div>
 }
 
 templ form() {
-	<form action="/" method="POST">
+	<form hx-post="/counts" hx-target="find #counts">
 		<div><button type="submit" name="count" value="count">Count</button></div>
 		<div><button type="submit" name="user" value="user">User</button></div>
 	</form>
@@ -29,7 +31,7 @@ templ head() {
 templ Page(state *State) {
     @head()
     <body>
-        @counts(state)
+        @Counts(state)
         @form()
     </body>
 }

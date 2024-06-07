@@ -7,6 +7,7 @@ import (
 	"webapp/source_map"
 	"webapp/templates"
 
+	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,15 +43,15 @@ func main() {
 
     var counterState = templates.State{}
 
-    renderCounter := func(c *gin.Context) {
-        component := templates.Page(&counterState)
-        if err := component.Render(c.Request.Context(), c.Writer); err != nil {
+    renderCounter := func(template templ.Component, c *gin.Context) {
+        if err := template.Render(c.Request.Context(), c.Writer); err != nil {
             c.Error(err)
         }
     }
 
     app.GET("/", func(c *gin.Context) {
-        renderCounter(c)
+        template := templates.Page(&counterState)
+        renderCounter(template, c)
     })
     app.POST("/", func(c *gin.Context) {
         c.Request.ParseForm()
@@ -58,7 +59,8 @@ func main() {
         if valStr {
             counterState.Counter += 1
         }
-        renderCounter(c)
+        template := templates.Counts(&counterState)
+        renderCounter(template, c)
     })
 
     source_map.Init(app, isDevelopment())
