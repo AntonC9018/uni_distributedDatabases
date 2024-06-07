@@ -5,6 +5,11 @@ import * as path from "path";
 export default (vite: any) => {
     const isProd = vite.mode == "production"
 
+    if (!isProd)
+    {
+        console.log("Running in dev mode")
+    }
+
     return defineConfig({
         root: "static",
         base: "/dist",
@@ -36,8 +41,21 @@ export default (vite: any) => {
                 "@": fileURLToPath(new URL("./static/src", import.meta.url)),
                 "htmx": (function()
                 {
-                    const path = isProd ? "htmx.org" : "htmx.org/dist/htmx";
-                    return fileURLToPath(new URL(path, import.meta.url));
+                    const path = function(){
+                        if (isProd)
+                        {
+                            return "htmx.org"
+                        }
+
+                        const basePath = "htmx.org/dist/htmx"
+                        let p = basePath;
+                        if (isProd)
+                        {
+                            return p + ".min"
+                        }
+                        return p;
+                    }();
+                    return path;
                 })(),
             }
         },

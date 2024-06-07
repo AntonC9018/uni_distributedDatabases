@@ -43,6 +43,8 @@ build_prod:
 	export GIN_MODE=release; go build -ldflags "-X main.Environment=production" -o ./bin/$(webapp_exe) $(webapp_path)
 	rm -rf bin/dist
 	cp -r static/dist bin/dist
+	echo 'export APP_ENV=production; ./webapp'> bin/run.sh
+	chmod +x bin/run.sh
 
 
 css_dir := static/css/
