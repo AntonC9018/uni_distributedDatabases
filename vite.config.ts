@@ -41,21 +41,11 @@ export default (vite: any) => {
                 "@": fileURLToPath(new URL("./static/src", import.meta.url)),
                 "htmx": (function()
                 {
-                    const path = function(){
-                        if (isProd)
-                        {
-                            return "htmx.org"
-                        }
-
-                        const basePath = "htmx.org/dist/htmx"
-                        let p = basePath;
-                        if (isProd)
-                        {
-                            return p + ".min"
-                        }
-                        return p;
-                    }();
-                    return path;
+                    if (isProd)
+                    {
+                        return "htmx.org/dist/htmx"
+                    }
+                    return "htmx.org/dist/htmx";
                 })(),
             }
         },
