@@ -1,14 +1,16 @@
 package main
 
 import (
-	"log"
+	"common/models"
 	"os"
 	"strings"
 	"webapp/source_map"
-	"webapp/templates"
+	template_test "webapp/templates/test"
+	template_lists "webapp/templates/lists"
 
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/currency"
 )
 
 func isDevelopment() bool {
@@ -17,14 +19,15 @@ func isDevelopment() bool {
     return !isProd
 }
 
+func renderTemplate(template templ.Component, c *gin.Context) {
+    if err := template.Render(c.Request.Context(), c.Writer); err != nil {
+        c.Error(err)
+    }
+}
+
 func main() {
 	app := gin.New()
 	app.Use(gin.Logger())
-
-    app.Use(func(c *gin.Context) {
-        log.Printf("Global log")
-        c.Next()
-    })
 
     app.Use(func(c *gin.Context) {
         c.Next()
@@ -41,17 +44,12 @@ func main() {
         c.JSON(400, gin.H{ "errors": errorStrings })
     })
 
-    var counterState = templates.State{}
+    var counterState = template_test.State{}
 
-    renderCounter := func(template templ.Component, c *gin.Context) {
-        if err := template.Render(c.Request.Context(), c.Writer); err != nil {
-            c.Error(err)
-        }
-    }
 
     app.GET("/", func(c *gin.Context) {
-        template := templates.Page(&counterState)
-        renderCounter(template, c)
+        template := template_test.Page(&counterState)
+        renderTemplate(template, c)
     })
     app.POST("/", func(c *gin.Context) {
         c.Request.ParseForm()
@@ -59,8 +57,32 @@ func main() {
         if valStr {
             counterState.Counter += 1
         }
-        template := templates.Counts(&counterState)
-        renderCounter(template, c)
+        template := template_test.Counts(&counterState)
+        renderTemplate(template, c)
+    })
+    app.GET("/lists", func(c *gin.Context) {
+        filteredLists := template_lists.FilteredLists{
+            Values: []models.Foaie{
+                {
+                    Id: 1,
+                    Pret: 200,
+                    Tip: "Mare",
+                    ProvidedTransport: true,
+                    Hotel: "test",
+                },
+                {
+                    Id: 2,
+                    Pret: 100,
+                    Tip: "Excursie",
+                    ProvidedTransport: false,
+                    Hotel: "test test test test test",
+                },
+            },
+            FieldsShouldRender: models.FoaieAllFieldMask(),
+            CurrencyFormatter: currency.ISO.Default(currency.EUR),
+        }
+        template := template_lists.Page(&filteredLists)
+        renderTemplate(template, c)
     })
 
     source_map.Init(app, isDevelopment())

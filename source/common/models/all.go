@@ -1,21 +1,4 @@
-package main
-
-type Client struct {
-    Id int32
-    Email string
-    Nume string
-    Prenume string
-}
-
-type ListType string
-
-type Foaie struct {
-    Id int32
-    Tip string
-    Pret float64
-    ProvidedTransport bool
-    Hotel string
-}
+package models
 
 type AllTableModels struct {
     Client Client
@@ -28,6 +11,10 @@ const (
     ClientIndex ModelIndex = iota
     ListIndex ModelIndex = iota
 )
+
+const MaxIndex ModelIndex = ListIndex
+const MinIndex ModelIndex = ClientIndex
+const ModelCount int = (int)(MaxIndex - MinIndex) + 1
 
 func (allModels *AllTableModels) Get(index ModelIndex) interface{} {
     switch index {

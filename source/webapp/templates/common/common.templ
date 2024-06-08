@@ -1,0 +1,16 @@
+package common
+
+import "webapp/source_map"
+
+templ Head() {
+    <head>
+        <script type="module" src={ source_map.Remap("src/main.ts") }></script>
+    </head>
+}
+
+templ Page(contents templ.Component) {
+    @Head()
+    <body class="bg-indigo-50">
+        @contents
+    </body>
+}

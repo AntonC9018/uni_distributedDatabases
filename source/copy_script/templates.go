@@ -1,12 +1,13 @@
 package main
 
 import (
+	"common/models"
+	db "common/database_config"
 	"fmt"
 	"log"
 	"reflect"
 	"strings"
 	"unicode"
-    db "common/database_config"
 )
 
 type StringsByDatabase struct {
@@ -433,7 +434,7 @@ var uniqueStringType = StringsByDatabase{
     SqlServer: "NVARCHAR(255) NOT NULL UNIQUE",
 }
 var ClientTemplates = createQueryTemplates(templateConfig{
-    ModelType: reflect.TypeOf(Client{}),
+    ModelType: reflect.TypeOf(models.Client{}),
     Columns: []TypedColumn{
         {
             Name: "id",
@@ -466,7 +467,7 @@ var boolType = StringsByDatabase{
     Postgres: "BOOLEAN NOT NULL",
 }
 var ListTemplates = createQueryTemplates(templateConfig{
-    ModelType: reflect.TypeOf(Foaie{}),
+    ModelType: reflect.TypeOf(models.Foaie{}),
     Columns: []TypedColumn{
         {
             Name: "id",
@@ -503,3 +504,4 @@ var ListTemplates = createQueryTemplates(templateConfig{
         },
     },
 })
+

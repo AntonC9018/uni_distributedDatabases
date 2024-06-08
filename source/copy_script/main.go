@@ -10,6 +10,7 @@ import (
 	"time"
     db "common/database_config"
     conf "common/config"
+    "common/models"
 
 	"github.com/spf13/viper"
 
@@ -72,7 +73,7 @@ func (context OtherDbIterationHelper) Iter() Seq2[int, ConnectionHelper] {
 
 type AllTablesToCopyIteratorContext struct {
     CopyingContexts []InitiatedCopyingContext
-    allModels AllTableModels
+    allModels models.AllTableModels
     fieldPointers [5]interface{}
     fieldValuePointers [5]interface{}
 }
@@ -93,11 +94,11 @@ type TableToCopyIterator struct {
     Templates *QueryTemplates
 }
 
-func getTemplates(index ModelIndex) *QueryTemplates {
+func getTemplates(index models.ModelIndex) *QueryTemplates {
     switch (index) {
-    case ClientIndex:
+    case models.ClientIndex:
         return &ClientTemplates
-    case ListIndex:
+    case models.ListIndex:
         return &ListTemplates
     default:
         panic("unreachable")
@@ -106,7 +107,8 @@ func getTemplates(index ModelIndex) *QueryTemplates {
 
 func (c *AllTablesToCopyIteratorContext) Iter() Seq2[int, TableToCopyIterator] {
     return func(body func(int, TableToCopyIterator) bool) {
-        for i, modelIndex := range []ModelIndex{ ClientIndex, ListIndex } {
+        for i := 0; i < models.ModelCount; i++ {
+            modelIndex := models.MinIndex + (models.ModelIndex)(i);
             model := c.allModels.Get(modelIndex)
             modelName := reflect.TypeOf(model).Elem().Name()
             if len(modelName) == 0 {

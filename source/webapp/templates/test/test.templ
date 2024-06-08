@@ -1,7 +1,7 @@
-package templates
+package test
 
-import "webapp/source_map"
 import "strconv"
+import "webapp/templates/common"
 
 type State struct {
     Counter int
@@ -22,17 +22,12 @@ templ form() {
 	</form>
 }
 
-templ head() {
-    <head>
-        <script type="module" src={ source_map.Remap("src/main.ts") }></script>
-    </head>
+templ wrapper(state *State) {
+    @Counts(state)
+    @form()
 }
 
 templ Page(state *State) {
-    @head()
-    <body>
-        @Counts(state)
-        @form()
-    </body>
+    @common.Page(wrapper(state))
 }
 

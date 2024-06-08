@@ -1,0 +1,96 @@
+package lists
+
+import "common/models"
+import "fmt"
+import "golang.org/x/text/currency"
+import common "webapp/templates/common"
+
+type FilteredLists struct {
+    Values []models.Foaie
+    FieldsShouldRender models.FoaieFieldMask
+    CurrencyFormatter currency.Formatter
+}
+
+templ field(name string, mask models.FoaieFieldMask, field models.FoaieField) {
+    if !mask.Get(field) {
+        return
+    }
+
+    <th class="underline">{ name }</th>
+}
+
+templ cell(value fmt.Stringer) {
+    <td>{ value.String() }</td>
+}
+
+templ lists(c *FilteredLists) {
+    <table class="table-fixed">
+        <tr>
+            @field("id", c.FieldsShouldRender, models.FoaieIdField)
+            @field("type", c.FieldsShouldRender, models.FoaieTipField)
+            @field("price", c.FieldsShouldRender, models.FoaiePretField)
+            @field("transport?", c.FieldsShouldRender, models.FoaieProvidedTransportField)
+            @field("hotel", c.FieldsShouldRender, models.FoaieHotelField)
+        </tr>
+
+    for i := range c.Values {
+        {{ foaie := &c.Values[i] }}
+        <tr>
+            if c.FieldsShouldRender.Id() {
+                {{
+                    id := int(foaie.Id)
+                    v := common.StringerFormat1{
+                        Format: "%d",
+                        Value: id,
+                    }
+                }}
+                @cell(&v)
+            }
+            if c.FieldsShouldRender.Tip() {
+                {{
+                    v := common.StringerString{
+                        Str: foaie.Tip,
+                    }
+                }}
+                @cell(&v)
+            }
+            if c.FieldsShouldRender.Pret() {
+                {{
+                    pret := foaie.Pret
+                    formatter := c.CurrencyFormatter(pret)
+                    v := common.StringerFormatter{
+                        Formatter: formatter,
+                    }
+                }}
+                @cell(&v)
+            }
+            if c.FieldsShouldRender.ProvidedTransport() {
+                {{
+                    str := func() string {
+                        if foaie.ProvidedTransport {
+                            return "yes"
+                        }
+                        return "no"
+                    }()
+                    v := common.StringerString{
+                        Str: str,
+                    }
+                }}
+                @cell(&v)
+            }
+            if c.FieldsShouldRender.Hotel() {
+                {{
+                    v := common.StringerString{
+                        Str: foaie.Hotel,
+                    }
+                }}
+                @cell(&v)
+            }
+        </tr>
+    }
+    </table>
+}
+
+templ Page(c *FilteredLists) {
+    @common.Page(lists(c))
+}

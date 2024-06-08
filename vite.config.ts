@@ -2,13 +2,9 @@ import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "url";
 import * as path from "path";
 
-export default (vite: any) => {
+/** @type {import('vite')} */
+export default (vite: { mode: string; }) => {
     const isProd = vite.mode == "production"
-
-    if (!isProd)
-    {
-        console.log("Running in dev mode")
-    }
 
     return defineConfig({
         root: "static",
