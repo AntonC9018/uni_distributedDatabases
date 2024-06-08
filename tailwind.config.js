@@ -3,7 +3,8 @@ import colors from 'tailwindcss/colors';
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
-        './static/src/**/*.{html,js}',
+        './static/src/**/*.{html,js,ts}',
+        './static/src/*.{html,js,ts}',
         './source/webapp/**/*.{html,templ}'
     ],
     theme: {

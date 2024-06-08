@@ -16,15 +16,19 @@ templ field(name string, mask models.FoaieFieldMask, field models.FoaieField) {
         return
     }
 
-    <th class="underline">{ name }</th>
+    <th>@fieldOrCell(name)</th>
 }
 
 templ cell(value fmt.Stringer) {
-    <td>{ value.String() }</td>
+    <td>@fieldOrCell(value.String())</td>
+}
+
+templ fieldOrCell(value string) {
+    <div class="p-2">{ value }</div>
 }
 
 templ lists(c *FilteredLists) {
-    <table class="table-fixed">
+    <table class="table-auto">
         <tr>
             @field("id", c.FieldsShouldRender, models.FoaieIdField)
             @field("type", c.FieldsShouldRender, models.FoaieTipField)
