@@ -7,6 +7,9 @@ export default (vite: { mode: string; }) => {
     const isProd = vite.mode == "production"
 
     return defineConfig({
+        optimizeDeps: {
+            noDiscovery: true,
+        },
         root: "static",
         base: "/dist",
         build: {
