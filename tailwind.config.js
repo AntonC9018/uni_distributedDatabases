@@ -4,7 +4,6 @@ import colors from 'tailwindcss/colors';
 export default {
     content: [
         './static/src/**/*.{html,js,ts}',
-        './static/src/*.{html,js,ts}',
         './source/webapp/**/*.{html,templ}'
     ],
     theme: {
