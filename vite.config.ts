@@ -24,17 +24,6 @@ export default (vite: { mode: string; }) => {
                 },
             },
         },
-        server: {
-            watch: {
-                ignored: (filePath) => {
-                    const relativePath = path.relative(import.meta.url, filePath)
-                    if (relativePath.startsWith("static")) {
-                        return false;
-                    }
-                    return true;
-                },
-            },
-        },
         resolve: {
             alias: {
                 "@": fileURLToPath(new URL("./static/src", import.meta.url)),
