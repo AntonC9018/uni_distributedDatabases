@@ -1,5 +1,7 @@
 package models
 
+import "common/iter"
+
 type Foaie struct {
     Id int32
     Tip string
@@ -20,6 +22,64 @@ const (
 const FoaieFirstField FoaieField = FoaieIdField
 const FoaieLastField FoaieField = FoaieHotelField
 const FoaieFieldCount int = (int)(FoaieHotelField) + 1
+
+type FoaieValueForEachField[T any] struct {
+    Values [FoaieFieldCount]T
+}
+func (v *FoaieValueForEachField[T]) Id() *T {
+    return &v.Values[FoaieIdField]
+}
+func (v *FoaieValueForEachField[T]) Tip() *T {
+    return &v.Values[FoaieTipField]
+}
+func (v *FoaieValueForEachField[T]) Pret() *T {
+    return &v.Values[FoaiePretField]
+}
+func (v *FoaieValueForEachField[T]) ProvidedTransport() *T {
+    return &v.Values[FoaieProvidedTransportField]
+}
+func (v *FoaieValueForEachField[T]) Hotel() *T {
+    return &v.Values[FoaieHotelField]
+}
+
+type ValueForEachIter[T any, Key any] struct {
+}
+type IterValue[T any] struct {
+    Key FoaieField
+    Value *T
+}
+
+func (v *FoaieValueForEachField[T]) Iter() iter.Seq1[IterValue[T]] {
+    return func(body func(IterValue[T]) bool) {
+        for i := range v.Values {
+            shouldKeepGoing := body(IterValue[T]{
+                Key: (FoaieField)(i),
+                Value: &v.Values[i],
+            })
+            if !shouldKeepGoing {
+                return
+            }
+        }
+    }
+}
+
+func (v *FoaieValueForEachField[T]) MaskedIter(mask FoaieFieldMask) iter.Seq1[IterValue[T]] {
+    return func(body func(IterValue[T]) bool) {
+        for i := range v.Values {
+            val := IterValue[T]{
+                Key: (FoaieField)(i),
+                Value: &v.Values[i],
+            }
+            if !mask.Get(val.Key) {
+                continue
+            }
+            shouldKeepGoing := body(val)
+            if !shouldKeepGoing {
+                return
+            }
+        }
+    }
+}
 
 type FoaieFieldMask struct {
     mask uint32
