@@ -1,13 +1,13 @@
 package lists
 
-import "common/models"
+import "common/models/foaie"
 import "fmt"
 import "golang.org/x/text/currency"
 import common "webapp/templates/common"
 
 type FilteredLists struct {
-    Values []models.Foaie
-    FieldsShouldRender models.FoaieFieldMask
+    Values []foaie.Foaie
+    FieldsShouldRender foaie.FieldMask
     CurrencyFormatter currency.Formatter
 }
 
@@ -27,7 +27,7 @@ templ lists(c *FilteredLists) {
     <table class="table-auto">
         <tr>
             {{
-                names := models.FoaieValueForEachField[string]{}
+                names := foaie.ValueForEachField[string]{}
                 *names.Id() = "id"
                 *names.Tip() = "type"
                 *names.Pret() = "price"
@@ -40,32 +40,32 @@ templ lists(c *FilteredLists) {
         </tr>
 
     for i := range c.Values {
-        {{ foaie := &c.Values[i] }}
+        {{ f := &c.Values[i] }}
         <tr>
             {{
-                valueStrings := models.FoaieValueForEachField[fmt.Stringer]{}
+                valueStrings := foaie.ValueForEachField[fmt.Stringer]{}
 
                 // All of these have to stay in scope so this doesn't allocate.
                 idStringer := common.StringerFormat1{
                     Format: "%d",
-                    Value: int(foaie.Id),
+                    Value: int(f.Id),
                 }
                 tipStringer := common.StringerString{
-                    Str: foaie.Tip,
+                    Str: f.Tip,
                 }
                 pretStringer := common.StringerFormatter{
-                    Formatter: c.CurrencyFormatter(foaie.Pret),
+                    Formatter: c.CurrencyFormatter(f.Pret),
                 }
                 transportStringer := common.StringerString{
                     Str: func() string {
-                        if foaie.ProvidedTransport {
+                        if f.ProvidedTransport {
                             return "yes"
                         }
                         return "no"
                     }(),
                 }
                 hotelStringer := common.StringerString{
-                    Str: foaie.Hotel,
+                    Str: f.Hotel,
                 }
 
                 *valueStrings.Id() = &idStringer

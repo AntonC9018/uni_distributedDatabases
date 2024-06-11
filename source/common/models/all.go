@@ -1,5 +1,11 @@
 package models
 
+import "common/models/foaie"
+import "common/models/client"
+
+type Foaie = foaie.Foaie
+type Client = client.Client
+
 type AllTableModels struct {
     Client Client
     List Foaie

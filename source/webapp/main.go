@@ -1,7 +1,7 @@
 package main
 
 import (
-	"common/models"
+    "common/models/foaie"
 	"os"
 	"strings"
 	"webapp/source_map"
@@ -62,7 +62,7 @@ func main() {
     })
     app.GET("/lists", func(c *gin.Context) {
         filteredLists := template_lists.FilteredLists{
-            Values: []models.Foaie{
+            Values: []foaie.Foaie{
                 {
                     Id: 1,
                     Pret: 200,
@@ -78,7 +78,7 @@ func main() {
                     Hotel: "test test test test test",
                 },
             },
-            FieldsShouldRender: models.FoaieAllFieldMask(),
+            FieldsShouldRender: foaie.AllFieldMask(),
             CurrencyFormatter: currency.ISO.Default(currency.EUR),
         }
         template := template_lists.Page(&filteredLists)
