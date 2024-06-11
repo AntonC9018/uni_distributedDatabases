@@ -16,6 +16,10 @@ build:
 	# $(MAKE) tailwind-build
 	$(MAKE) vite-build
 	$(MAKE) templ-generate
+	$(MAKE) go-build
+
+.PHONY: go-build
+go-build:
 	go build -o $(dev_webapp_output) $(webapp_path)
 
 # Needs to be run manually

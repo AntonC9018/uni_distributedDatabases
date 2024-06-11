@@ -1,11 +1,13 @@
 package main
 
 import (
-    "common/models/foaie"
+	"common/config"
+	"common/database_config"
+	"common/models/foaie"
+	"log"
 	"os"
 	"strings"
 	"webapp/source_map"
-	template_test "webapp/templates/test"
 	template_lists "webapp/templates/lists"
 
 	"github.com/a-h/templ"
@@ -26,6 +28,17 @@ func renderTemplate(template templ.Component, c *gin.Context) {
 }
 
 func main() {
+    config_, err := config.ReadConfig();
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    dbContext, err := database_config.EstablishConnectionsFromConfig(config_)
+    if err != nil {
+        log.Fatal(err)
+    }
+    _ = dbContext
+
 	app := gin.New()
 	app.Use(gin.Logger())
 
@@ -44,22 +57,6 @@ func main() {
         c.JSON(400, gin.H{ "errors": errorStrings })
     })
 
-    var counterState = template_test.State{}
-
-
-    app.GET("/", func(c *gin.Context) {
-        template := template_test.Page(&counterState)
-        renderTemplate(template, c)
-    })
-    app.POST("/", func(c *gin.Context) {
-        c.Request.ParseForm()
-        valStr := c.Request.Form.Has("count")
-        if valStr {
-            counterState.Counter += 1
-        }
-        template := template_test.Counts(&counterState)
-        renderTemplate(template, c)
-    })
     app.GET("/lists", func(c *gin.Context) {
         filteredLists := template_lists.FilteredLists{
             Values: []foaie.Foaie{
