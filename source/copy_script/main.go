@@ -8,7 +8,7 @@ import (
 	"os"
 	"reflect"
 	"time"
-    db "common/database_config"
+    db "common/database"
     conf "common/config"
     "common/models"
 

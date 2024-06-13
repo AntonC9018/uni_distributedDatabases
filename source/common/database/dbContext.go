@@ -1,4 +1,4 @@
-package database_config
+package database
 
 import (
 	"bytes"
@@ -36,6 +36,16 @@ type DatabasesContext struct {
 	MainDatabaseIndex   int
 	Databases    []NamedDatabase
 }
+
+func (context *DatabasesContext) FindDatabaseWithName(name string) (int, bool) {
+    for i, db := range context.Databases {
+        if db.Name == name {
+            return i, true
+        }
+    }
+    return 0, false
+}
+
 
 func (context *DatabasesContext) MainDatabase() *NamedDatabase {
 	return &context.Databases[context.MainDatabaseIndex]

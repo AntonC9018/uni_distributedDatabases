@@ -1,11 +1,29 @@
 module webapp
 
-go 1.21.1
+go 1.22.0
+
+toolchain go1.22.3
 
 require (
 	github.com/a-h/templ v0.2.707
 	github.com/gin-gonic/gin v1.10.0
+	github.com/pilagod/gorm-cursor-paginator/v2 v2.6.0
 	golang.org/x/text v0.16.0
+)
+
+require (
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
+	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgx/v5 v5.4.3 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/microsoft/go-mssqldb v1.6.0 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 )
 
 require (
@@ -34,4 +52,7 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/postgres v1.5.7
+	gorm.io/driver/sqlserver v1.5.3
+	gorm.io/gorm v1.25.10
 )
