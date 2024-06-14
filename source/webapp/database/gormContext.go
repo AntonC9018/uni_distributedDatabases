@@ -5,7 +5,6 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
-    _ "github.com/jinzhu/gorm/dialects/postgres"
 	"gorm.io/gorm"
 )
 
