@@ -9,8 +9,8 @@ import (
 	"log"
 
 	"github.com/spf13/viper"
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/lib/pq"
+	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/jackc/pgx/v5"
 )
 
 type ConnectionInfo struct {

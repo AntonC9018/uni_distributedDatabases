@@ -3,7 +3,7 @@ package foaie
 import "common/iter"
 
 type Foaie struct {
-    Id int32
+    ID int32
     Tip string
     Pret float64
     ProvidedTransport bool

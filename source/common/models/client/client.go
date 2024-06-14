@@ -1,7 +1,7 @@
 package client
 
 type Client struct {
-    Id int32
+    ID int32
     Email string
     Nume string
     Prenume string

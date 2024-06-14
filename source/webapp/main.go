@@ -113,6 +113,7 @@ func CreatePaginator(c *gin.Context) paginator.Paginator {
         return ret
     }
 
+    ret.SetAllowTupleCmp(false)
     ret.SetKeys("ID")
     ret.SetOrder(p.Order)
     ret.SetLimit(p.Limit)

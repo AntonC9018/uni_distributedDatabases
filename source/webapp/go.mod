@@ -7,12 +7,13 @@ toolchain go1.22.3
 require (
 	github.com/a-h/templ v0.2.707
 	github.com/gin-gonic/gin v1.10.0
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/pilagod/gorm-cursor-paginator/v2 v2.6.0
 	golang.org/x/text v0.16.0
 )
 
 require (
-	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
+	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/lib/pq v1.3.0 // indirect
 	github.com/microsoft/go-mssqldb v1.6.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 )
@@ -37,6 +39,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.21.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
+	github.com/jinzhu/gorm v1.9.16
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
