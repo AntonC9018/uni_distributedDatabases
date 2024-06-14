@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/spf13/viper"
-	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/jackc/pgx/v5"
+    _ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/microsoft/go-mssqldb"
+	"github.com/spf13/viper"
 )
 
 type ConnectionInfo struct {
@@ -218,7 +219,7 @@ func databaseProviderString(databaseType DatabaseType) string {
 	var r string
 	switch databaseType {
 	case Postgres:
-		r = "postgres"
+		r = "pgx"
 	case SqlServer:
 		r = "sqlserver"
 	default:

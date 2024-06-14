@@ -1,6 +1,9 @@
 package main
 
 import (
+	conf "common/config"
+	db "common/database"
+	"common/models"
 	"context"
 	"database/sql"
 	"fmt"
@@ -8,14 +11,12 @@ import (
 	"os"
 	"reflect"
 	"time"
-    db "common/database"
-    conf "common/config"
-    "common/models"
 
 	"github.com/spf13/viper"
 
-	mssql "github.com/denisenkom/go-mssqldb"
-	"github.com/lib/pq"
+	pq "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	mssql "github.com/microsoft/go-mssqldb"
 )
 
 type ConnectionHelper struct {
@@ -246,10 +247,13 @@ func doTheCopying(dbContext *db.DatabasesContext, backgroundContext context.Cont
 
                     switch (to.Database.Type) {
                     case db.Postgres:
-                        _, err = copyingContext.preparedBulk.PostgresStatement.Exec(fieldValues[:]...)
-                        if err != nil {
-                            return
-                        }
+                        // Yikes, we have to box every single field.
+                        // There isn't really an easy way around this...
+                        // I really wanted the library to handle batching on its own.
+                        row := make([]any, len(fieldValues))
+                        BoxValues(scanParams, row)
+                        p := &copyingContext.preparedBulk.Postgres
+                        p.Fields = append(p.Fields, row)
                     case db.SqlServer:
                         err = copyingContext.preparedBulk.SqlServerBulk.AddRow(fieldValues[:])
                         if err != nil {
@@ -269,7 +273,16 @@ func doTheCopying(dbContext *db.DatabasesContext, backgroundContext context.Cont
 
                 switch (to.Database.Type) {
                 case db.Postgres:
-                    _, err = copyingContext.preparedBulk.PostgresStatement.Exec()
+                    f := copyingContext.preparedBulk.Postgres.Fields
+                    to.Connection.Raw(func(driverConn any) error {
+                        conn := driverConn.(*stdlib.Conn)
+                        _, err := conn.Conn().CopyFrom(
+                            backgroundContext,
+                            pq.Identifier{copyingContext.tempTableName},
+                            modelIter.Templates.ColumnNames,
+                            pq.CopyFromRows(f))
+                        return err
+                    })
                     if err != nil {
                         return
                     }
@@ -365,8 +378,13 @@ func mainWithError(context context.Context) error {
     return nil
 }
 
+type PostgresBulk struct {
+    // Just copies of objects
+    Fields [][]any
+}
+
 type PreparedBulkContext struct {
-    PostgresStatement *sql.Stmt
+    Postgres PostgresBulk 
     SqlServerBulk *mssql.Bulk
 }
 
@@ -387,10 +405,8 @@ func prepareInsertIntoTempTableStatement(
 
     switch (c.Database.Type) {
     case db.Postgres:
-        copyInString := pq.CopyIn(tempTableName, templates.ColumnNames...)
-        statement, err := c.Transaction.PrepareContext(context, copyInString)
         return PreparedBulkContext{
-            PostgresStatement: statement,
+            Postgres: PostgresBulk{},
         }, err
     case db.SqlServer:
         var bulk *mssql.Bulk

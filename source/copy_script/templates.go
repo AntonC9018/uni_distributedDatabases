@@ -2,7 +2,7 @@ package main
 
 import (
 	"common/models"
-	db "common/database_config"
+	db "common/database"
 	"fmt"
 	"log"
 	"reflect"

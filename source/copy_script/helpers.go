@@ -59,3 +59,14 @@ func ValuesFromPointers(pointers []interface{}, output []interface{}) {
     }
 }
 
+
+func BoxValues(pointers []interface{}, output []interface{}) {
+    if len(pointers) != len(output) {
+        panic("Lengths of input and output must be equal")
+    }
+
+    for i, p := range pointers {
+        elem := reflect.ValueOf(p).Elem()
+        output[i] = elem.Interface();
+    }
+}
