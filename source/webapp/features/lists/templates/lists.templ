@@ -1,54 +1,52 @@
-package lists
+package templates
 
 import "common/models/foaie"
+import "common"
 import "fmt"
 import "golang.org/x/text/currency"
-import common "webapp/templates/common"
+import "webapp/stuff/templates"
 
 type FilteredLists struct {
     Values []foaie.Foaie
     FieldsShouldRender foaie.FieldMask
     CurrencyFormatter currency.Formatter
+    NextItemsUrl string
 }
 
-templ field(name string) {
-    <th>@fieldOrCell(name)</th>
+templ header(name string) {
+    <th>@headerOrCell(name)</th>
 }
 
-templ cell(value fmt.Stringer) {
-    <td>@fieldOrCell(value.String())</td>
+type cellParams struct {
+    value fmt.Stringer
 }
 
-templ fieldOrCell(value string) {
+templ cell(p cellParams) {
+    <td>
+        @headerOrCell(p.value.String())
+    </td>
+}
+
+templ headerOrCell(value string) {
     <div class="p-3">{ value }</div>
 }
 
-templ lists(c *FilteredLists) {
-    <table class="table-auto">
-        <tr>
-            {{
-                names := foaie.ValueForEachField[string]{}
-                *names.Id() = "id"
-                *names.Tip() = "type"
-                *names.Pret() = "price"
-                *names.ProvidedTransport() = "transport?"
-                *names.Hotel() = "hotel"
-            }}
-            for v := range names.MaskedIter(c.FieldsShouldRender) {
-                @field(*v.Value)
-            }
-        </tr>
-
+templ Lists(c *FilteredLists) {
     for i := range c.Values {
-        {{ f := &c.Values[i] }}
-        <tr>
+        <tr
+            if i == len(c.Values) - 1 && c.NextItemsUrl != "" {
+                hx-trigger="revealed"
+                hx-get={c.NextItemsUrl}
+                hx-swap="afterend"
+            }>
             {{
+                f := &c.Values[i]
                 valueStrings := foaie.ValueForEachField[fmt.Stringer]{}
 
                 // All of these have to stay in scope so this doesn't allocate.
                 idStringer := common.StringerFormat1{
                     Format: "%d",
-                    Value: int(f.Id),
+                    Value: int(f.ID),
                 }
                 tipStringer := common.StringerString{
                     Str: f.Tip,
@@ -75,13 +73,33 @@ templ lists(c *FilteredLists) {
                 *valueStrings.Hotel() = &hotelStringer
             }}
             for v := range valueStrings.MaskedIter(c.FieldsShouldRender) {
-                @cell(*v.Value)
+                @cell(cellParams{
+                    value: *v.Value,
+                })
             }
         </tr>
     }
+}
+
+templ listsTable(c *FilteredLists) {
+    <table class="table-auto" id="lists">
+        <tr>
+            {{
+                names := foaie.ValueForEachField[string]{}
+                *names.Id() = "id"
+                *names.Tip() = "type"
+                *names.Pret() = "price"
+                *names.ProvidedTransport() = "transport?"
+                *names.Hotel() = "hotel"
+            }}
+            for v := range names.MaskedIter(c.FieldsShouldRender) {
+                @header(*v.Value)
+            }
+        </tr>
+    @Lists(c)
     </table>
 }
 
 templ Page(c *FilteredLists) {
-    @common.Page(lists(c))
+    @templates.Page(listsTable(c))
 }
