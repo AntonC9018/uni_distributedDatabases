@@ -43,14 +43,14 @@ func CreateGormDatabase(database *db.NamedDatabase, gormConfig *gorm.Config) (*g
     return gorm.Open(dialector, gormConfig)
 }
 
-
 type GormFactory struct {
     Config gorm.Config
     DbContext *db.DatabasesContext
 }
 
 func (f *GormFactory) Create(index int) (*gorm.DB, error) {
-    gormDb, err := CreateGormDatabase(f.DbContext.MainDatabase(), &f.Config)
+    db := &f.DbContext.Databases[index]
+    gormDb, err := CreateGormDatabase(db, &f.Config)
     return gormDb, err
 }
 
@@ -60,7 +60,6 @@ type ConnectionError struct {
 func (err ConnectionError) Error() string {
     return "Error while connecting to database"
 }
-
 
 type PaginationError struct {
 }

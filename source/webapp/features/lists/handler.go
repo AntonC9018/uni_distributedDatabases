@@ -15,7 +15,7 @@ import (
 )
 
 type ListsQuery struct {
-    Database string `query:"db"`
+    Database string `form:"db"`
 }
 
 type handleListParams struct {
@@ -25,10 +25,10 @@ type handleListParams struct {
 }
 
 func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
-    var query ListsQuery
 
     errScope := stuff.CreateErrorScope(p.Context)
 
+    var query ListsQuery
     if err := p.Context.Bind(&query); err != nil {
         p.Context.Error(err)
     }
@@ -37,6 +37,8 @@ func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
     if errScope.HasErrors() {
         return
     }
+
+    log.Print(query)
 
     var databaseIndex int
     if query.Database != "" {
@@ -48,6 +50,7 @@ func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
     } else {
         databaseIndex = p.DbContext.MainDatabaseIndex
     }
+    log.Print(databaseIndex)
 
     if errScope.HasErrors() {
         return
