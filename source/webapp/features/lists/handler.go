@@ -38,8 +38,6 @@ func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
         return
     }
 
-    log.Print(query)
-
     var databaseIndex int
     if query.Database != "" {
         i_, found := p.DbContext.FindDatabaseWithName(query.Database)
@@ -50,7 +48,6 @@ func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
     } else {
         databaseIndex = p.DbContext.MainDatabaseIndex
     }
-    log.Print(databaseIndex)
 
     if errScope.HasErrors() {
         return
