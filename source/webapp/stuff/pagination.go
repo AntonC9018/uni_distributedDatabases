@@ -18,8 +18,8 @@ type valueCursor struct {
 
 type Pagination struct {
     cursor valueCursor
-    Order paginator.Order
-    Limit int
+    Order paginator.Order `form:"order"`
+    Limit int `form:"limit"`
 }
 
 func (p *Pagination) Cursor() Cursor {
@@ -40,17 +40,13 @@ func GetPagination(c *gin.Context) Pagination {
     errScope := CreateErrorScope(c)
     ret := Pagination{}
 
+
     err := c.BindQuery(&ret.cursor)
     if err != nil {
         c.Error(err)
     }
 
-    err = c.BindQuery(&ret.Order)
-    if err != nil {
-        c.Error(err)
-    }
-
-    err = c.BindQuery(&ret.Limit)
+    err = c.BindQuery(&ret)
     if err != nil {
         c.Error(err)
     }
