@@ -2,7 +2,9 @@ package database
 
 import (
 	db "common/database"
+	"log"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
@@ -54,6 +56,17 @@ func (f *GormFactory) Create(index int) (*gorm.DB, error) {
     return gormDb, err
 }
 
+func (f *GormFactory) CreateWrapError(c *gin.Context, index int) *gorm.DB {
+    gormDb, err := f.Create(index)
+    if err != nil {
+        log.Printf("Error while connecting to db: %v", err)
+        c.Error(ConnectionError{})
+        return nil
+    }
+
+    return gormDb.WithContext(c.Request.Context())
+}
+
 type ConnectionError struct {
 }
 
@@ -66,4 +79,14 @@ type PaginationError struct {
 
 func (err PaginationError) Error() string {
     return "Error while paginating the query"
+}
+
+
+func HandleLastError(gormDb *gorm.DB, c *gin.Context) bool {
+    if err := gormDb.Error; err != nil {
+        log.Printf("An error occured while querying the database %v", err)
+        c.Error(ConnectionError{})
+        return false
+    }
+    return true
 }

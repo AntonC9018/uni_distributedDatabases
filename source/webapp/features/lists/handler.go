@@ -62,7 +62,7 @@ func getListsTemplateData(p handleListParams) (ret templates.FilteredLists) {
 
     foiStatement := gormDb.Model(&database.Foaie{})
     var databaseFoi []database.Foaie
-    gormDb, cursor, err := pagination.Paginate(foiStatement, &databaseFoi)
+    foiStatement, cursor, err := pagination.Paginate(foiStatement, &databaseFoi)
     if err != nil {
         log.Printf("Error while paginating: %v", err)
         p.Context.Error(database.PaginationError{})
@@ -121,7 +121,7 @@ func renderListsTemplate(templateType TemplateType, p handleListParams) {
     stuff.RenderTemplate(template, p.Context)
 }
 
-func InitListHandler(builder *gin.Engine, appContext *stuff.ApplicationContext) {
+func InitHandlers(builder *gin.Engine, appContext *stuff.ApplicationContext) {
     for i := 0; i < TemplateCount; i++ {
         templateType := TemplateType(i)
         path := func() string {

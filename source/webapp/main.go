@@ -2,10 +2,12 @@ package main
 
 import (
 	"log"
-	"webapp/source_map"
+	createClient "webapp/features/clients/create"
 	lists "webapp/features/lists"
+	"webapp/source_map"
+	"webapp/stuff"
+
 	"github.com/gin-gonic/gin"
-    "webapp/stuff"
 )
 
 func main() {
@@ -17,7 +19,8 @@ func main() {
 	app := gin.New()
 	app.Use(gin.Logger())
 
-    lists.InitListHandler(app, &appContext)
+    lists.InitHandlers(app, &appContext)
+    createClient.InitHandler(app, &appContext)
     source_map.Init(app, stuff.IsDevelopment())
 
     app.Run()
