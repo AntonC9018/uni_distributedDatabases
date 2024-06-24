@@ -13,6 +13,10 @@ type ApplicationContext struct {
     GormFactory database.GormFactory
 }
 
+func (c *ApplicationContext) IsDevelopment() bool {
+    return isDevelopment()
+}
+
 func CreateApplicationContext() (ret ApplicationContext, err error) {
     var dbContext database_config.DatabasesContext
     config_, err := config.ReadConfig();

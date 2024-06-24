@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	createClient "webapp/features/clients/create"
-	lists "webapp/features/lists"
+	"webapp/features/clients"
+	"webapp/features/lists"
 	"webapp/source_map"
 	"webapp/stuff"
 
@@ -20,8 +20,8 @@ func main() {
 	app.Use(gin.Logger())
 
     lists.InitHandlers(app, &appContext)
-    createClient.InitHandler(app, &appContext)
-    source_map.Init(app, stuff.IsDevelopment())
+    clients.InitHandlers(app, &appContext)
+    source_map.Init(app, appContext.IsDevelopment())
 
     app.Run()
 }
