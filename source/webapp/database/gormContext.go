@@ -81,7 +81,6 @@ func (err PaginationError) Error() string {
     return "Error while paginating the query"
 }
 
-
 func HandleLastError(gormDb *gorm.DB, c *gin.Context) bool {
     if err := gormDb.Error; err != nil {
         log.Printf("An error occured while querying the database %v", err)

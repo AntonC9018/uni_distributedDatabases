@@ -1,0 +1,134 @@
+package templates
+
+import (
+    "common/models"
+    "webapp/stuff/templates"
+    "fmt"
+	"github.com/gin-gonic/gin"
+)
+
+type DebugInfoParams struct {
+    Client *models.Client
+}
+
+templ DebugInfo(params DebugInfoParams) {
+    <div>
+        if params.Client != nil {
+            { fmt.Sprintf("%d", params.Client.ID) }
+            <br>
+            { params.Client.Email }
+            <br>
+            { params.Client.Nume }
+            <br>
+            { params.Client.Prenume }
+            <br>
+        }
+    </div>
+}
+
+type CreateFormParams struct {
+    Client *models.Client
+}
+
+templ CreateForm(params *CreateFormParams) {
+    <form 
+        class="p-4 bg-gray-300 shadow-black shadow-sm m-4" 
+        hx-post="/client"
+        hx-target="#client-create-results">
+
+        @field(fieldParams{
+            value: params.Client.Email,
+            name: "email",
+            label: "Email",
+        })
+        @field(fieldParams{
+            value: params.Client.Nume,
+            name: "nume",
+            label: "Nume",
+        })
+        @field(fieldParams{
+            value: params.Client.Prenume,
+            name: "prenume",
+            label: "Prenume",
+        })
+
+        <div class="flex items-start mb-5">
+            <div class="flex items-center h-5 ml-2 mr-2">
+            <input
+                id="login"
+                type="checkbox"
+                class="w-4 h-4"
+                checked />
+            </div>
+            <label for="login" class={labelText + ""}>Remember me</label>
+        </div>
+
+        <div>
+            <input 
+                type="submit"
+                value="Register / Update"
+                class="bg-indigo-500 hover:bg-indigo-700 p-1 text-white rounded m-2">
+        </div>
+
+        <div id="client-create-results"></div>
+
+    </form>
+}
+
+const labelText string = "text-sm font-medium"
+
+type fieldParams struct {
+    value string
+    name string
+    label string
+}
+
+templ field(p fieldParams) {
+    <div class="m-2">
+        <label for={p.name} class={"block " + labelText}>{p.label}</label>
+        <input 
+            type="text"
+            name={p.name}
+            value={p.value}
+            class="
+                block
+                border border-x-emerald-50 focus:border-emerald-300
+                text-sm
+                bg-gray-100"/>
+    </div>
+}
+
+templ CreateFormPage(params *CreateFormParams) {
+    @templates.Page(CreateForm(params))
+}
+
+type CreateResultParams struct {
+    Errors []*gin.Error
+}
+
+func (p *CreateResultParams) HasErrors() bool {
+    return len(p.Errors) > 0
+}
+
+templ CreateResult(p *CreateResultParams) {
+    
+    <div
+        if p.HasErrors() {
+            class="text-sm text-red-600"
+        } else {
+            class="text-sm text-white"
+        }>
+
+        if p.HasErrors() {
+            <ol>
+            for _, err := range p.Errors {
+                <li>{ err.Err.Error() }</li>
+            }
+            </ol>
+        } else {
+            <p>
+            Success!
+            </p>
+        }
+    </div>
+}

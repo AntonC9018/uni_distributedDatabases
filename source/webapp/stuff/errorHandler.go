@@ -30,3 +30,6 @@ func InitErrorHandler(app *gin.Engine) {
         c.JSON(errorCode, gin.H{ "errors": errorStrings })
     })
 }
+
+type ValidationError error
+

@@ -19,6 +19,7 @@ func main() {
 	app := gin.New()
 	app.Use(gin.Logger())
 
+    stuff.InitErrorHandler(app)
     lists.InitHandlers(app, &appContext)
     clients.InitHandlers(app, &appContext)
     source_map.Init(app, appContext.IsDevelopment())

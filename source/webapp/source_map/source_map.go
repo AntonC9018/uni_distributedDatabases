@@ -83,5 +83,5 @@ func Remap(path string) string {
         return viteManifest.NameMap[path]
     }
     // This only happens in development, so we don't care about the allocation
-    return "dist/" + path
+    return "/dist/" + path
 }

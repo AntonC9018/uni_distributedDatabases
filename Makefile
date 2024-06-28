@@ -34,11 +34,6 @@ run:
 	$(MAKE) build
 	$(dev_webapp_output)
 
-
-.PHONY: air
-air:
-	air
-	
 .PHONY: build_prod
 build_prod:
 	rm -rf bin/*

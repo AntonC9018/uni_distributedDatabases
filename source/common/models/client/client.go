@@ -4,8 +4,10 @@ import (
 	"math/bits"
 )
 
+type IDType = int32
+
 type Client struct {
-    ID int32
+    ID IDType
     Email string
     Nume string
     Prenume string
