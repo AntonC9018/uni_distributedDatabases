@@ -44,7 +44,7 @@ func initManifest(path string) {
 		if !ok {
 			panic("unexpected file format")
 		}
-		result.NameMap[key] = "dist/" + file
+		result.NameMap[key] = "/dist/" + file
 	}
 
     viteManifest = result
