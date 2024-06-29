@@ -10,6 +10,7 @@ import (
 
 	"common/models"
 	clientmod "common/models/client"
+    "webapp/features/clients/cookies"
 )
 
 
@@ -52,11 +53,20 @@ func bindDto(c *gin.Context) (ret ClientIdentificationDto, err error) {
     return
 }
 
-func query(c *gin.Context, appContext *stuff.ApplicationContext) (ret database.Client) {
+func query(c *gin.Context, appContext *stuff.ApplicationContext) (ret database.Client, remember bool) {
+
+    emailFromCookie, cookieErr := stuff.GetCookie(c, &cookies.EmailCookie)
+    if cookieErr == nil {
+        remember = true
+    }
 
     identification, err := bindDto(c)
-    if err != nil {
+    if err != nil && err != errNoClient {
         return
+    }
+
+    if err == errNoClient {
+        identification.Email = emailFromCookie
     }
 
     errScope := stuff.CreateErrorScope(c)
@@ -84,9 +94,9 @@ func query(c *gin.Context, appContext *stuff.ApplicationContext) (ret database.C
     return
 }
 
-func Handle(c *gin.Context, appContext *stuff.ApplicationContext) (ret models.Client) {
+func Handle(c *gin.Context, appContext *stuff.ApplicationContext) (ret models.Client, remember bool) {
     errScope := stuff.CreateErrorScope(c)
-    client := query(c, appContext)
+    client, remember := query(c, appContext)
     if errScope.HasErrors() {
         return
     }

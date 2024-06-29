@@ -28,6 +28,7 @@ templ DebugInfo(params DebugInfoParams) {
 
 type CreateFormParams struct {
     Client *models.Client
+    Remember bool
 }
 
 templ CreateForm(params *CreateFormParams) {
@@ -55,12 +56,13 @@ templ CreateForm(params *CreateFormParams) {
         <div class="flex items-start mb-5">
             <div class="flex items-center h-5 ml-2 mr-2">
             <input
-                id="login"
+                name="remember"
                 type="checkbox"
-                class="w-4 h-4"
-                checked />
+                value="true"
+                checked?={params.Remember}
+                class="w-4 h-4"/>
             </div>
-            <label for="login" class={labelText + ""}>Remember me</label>
+            <label for="remember" class={labelText}>Remember me</label>
         </div>
 
         <div>

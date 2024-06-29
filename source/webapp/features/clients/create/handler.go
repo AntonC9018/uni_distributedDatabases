@@ -28,13 +28,14 @@ func InitHandler(builder *gin.Engine, appContext *stuff.ApplicationContext) {
 
     g.GET("form", func(c *gin.Context) {
         errScope := stuff.CreateErrorScope(c)
-        client := formhandler.Handle(c, appContext)
+        client, remember := formhandler.Handle(c, appContext)
         if errScope.HasErrors() {
             return
         }
 
         params := templates.CreateFormParams{
             Client: &client,
+            Remember: remember,
         }
         template := templates.CreateFormPage(&params)
         stuff.RenderTemplate(template, c)

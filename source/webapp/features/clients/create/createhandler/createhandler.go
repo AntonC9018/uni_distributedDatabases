@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	clientmod "common/models/client"
+	"webapp/features/clients/cookies"
 )
 
 // This does:
@@ -74,6 +75,17 @@ func Handle(c *gin.Context, appContext *stuff.ApplicationContext) {
         return
     }
 
+    defer func() {
+        if errScope.HasErrors() {
+            return
+        }
+
+        if dto.Remember {
+            stuff.SetCookie(c, &cookies.EmailCookie, client.Email)
+        } else {
+            stuff.RemoveCookie(c, &cookies.EmailCookie)
+        }
+    }()
     // At this point we've pulled in data from the db.
     // If it's just been created, and not all fields have been provided,
     // the fields that have not been filled in will be empty strings.
@@ -142,6 +154,7 @@ type CreateClientDto struct {
     Email string `form:"email"`
     Nume string `form:"nume"`
     Prenume string `form:"prenume"`
+    Remember bool `form:"remember"`
 }
 
 func mapToDbObject(client CreateClientDto) database.Client {
